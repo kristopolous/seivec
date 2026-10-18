@@ -57,7 +57,8 @@ def on_call_start(call: guava.Call) -> None:
         objective=(
             "Greet the caller as Sievec, the LA city and county services line. Learn what they need and "
             "where. Keep it short and warm. If they already said the problem, don't make them repeat it. "
-            "Never promise when a crew will arrive."
+            "If they mention an accident, a fall, or anything where someone could be hurt, ask whether anyone "
+            "is injured; if so, tell them to hang up and dial 911 now. Never promise when a crew will arrive."
         ),
         checklist=[
             guava.Field(

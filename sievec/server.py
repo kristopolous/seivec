@@ -41,6 +41,60 @@ def stats() -> dict:
     }
 
 
+def detail_stats() -> dict:
+    """Routing outcomes across the whole call log (not just what's on screen)."""
+    from .bus import CALL_LOG
+    calls: dict[str, dict] = {}
+    if CALL_LOG.exists():
+        for line in CALL_LOG.read_text().splitlines():
+            if line.strip():
+                try:
+                    c = json.loads(line)
+                    calls[c["id"]] = c
+                except (json.JSONDecodeError, KeyError):
+                    pass
+    for c in bus.snapshot()["calls"]:
+        calls[c["id"]] = c
+    routed = [c for c in calls.values() if (c.get("decision") or {}).get("cell")]
+    by_dest: dict[tuple, dict] = {}
+    for c in routed:
+        d = c["decision"]
+        cell, cat, place = d["cell"], d["category"], d.get("place") or {}
+        k = (cell.get("department"), cell.get("phone_display"), cat["label"], place.get("key"))
+        row = by_dest.setdefault(k, {"department": k[0], "phone": k[1], "service": k[2],
+                                     "jurisdiction": rules.jurisdictions.get(k[3], {}).get("short") or place.get("name"),
+                                     "count": 0, "live": 0, "sample": 0, "fallback": 0})
+        row["count"] += 1
+        row["sample" if c.get("simulated") else "live"] += 1
+        row["fallback"] += 1 if d.get("fallback") else 0
+    def tally(fn) -> list[dict]:
+        out = Counter(fn(c) for c in routed)
+        return [{"label": k, "count": v} for k, v in out.most_common() if k]
+    times = []
+    for c in routed:
+        rule = next((s for s in c.get("pipeline") or [] if s["key"] == "rule" and s.get("t")), None)
+        if rule:
+            times.append(rule["t"] - c["started_at"])
+    statuses = Counter(c.get("status") for c in calls.values())
+    return {
+        "calls": len(calls),
+        "live_calls": sum(1 for c in calls.values() if not c.get("simulated")),
+        "routed": len(routed),
+        "handed_off": statuses.get("handoff", 0) + statuses.get("transferred", 0),
+        "emergencies": statuses.get("emergency", 0),
+        "outside_area": statuses.get("no-match", 0),
+        "hung_up_early": sum(1 for c in calls.values() if c.get("status") == "ended" and not c.get("decision")),
+        "median_seconds_to_route": round(sorted(times)[len(times) // 2], 1) if times else None,
+        "destinations": sorted(by_dest.values(), key=lambda r: -r["count"]),
+        "by_service": tally(lambda c: c["decision"]["category"]["label"]),
+        "by_jurisdiction": tally(lambda c: (c["decision"].get("place") or {}).get("name", "").split(" (")[-1].rstrip(")")
+                                 if "(" in (c["decision"].get("place") or {}).get("name", "")
+                                 else (c["decision"].get("place") or {}).get("name")),
+        "by_method": tally(lambda c: c["decision"]["category"].get("method", "").split(" (")[0]),
+        "by_place_method": tally(lambda c: (c["decision"].get("place") or {}).get("method", "").split(" (")[0]),
+    }
+
+
 def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -57,6 +111,10 @@ def create_app() -> FastAPI:
     @app.get("/api/state")
     async def state():
         return {**bus.snapshot(), "stats": stats(), "rules": rules.public_table()}
+
+    @app.get("/api/stats")
+    async def stats_detail():
+        return await asyncio.to_thread(detail_stats)
 
     @app.get("/api/scenarios")
     async def scenarios():

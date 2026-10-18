@@ -57,8 +57,11 @@ def _snippets(pages: list[dict], limit: int = 80) -> list[dict]:
             after = _clean(text[m.end(): min(next_start, m.end() + 110)])[:90]
             # Which side is this number's own label on? Decide from the markup.
             raw_before, raw_after = text[max(0, m.start() - 4): m.start()], text[m.end(): m.end() + 8]
+            heading = re.search(r"(#{1,6}|\*\*)[^#*]{2,60}(\*\*)?\s*\[?\(?$", text[max(prev_end, m.start() - 70): m.start()])
             if "|" in raw_before:
                 label = before                       # table: "| Label | number |"
+            elif heading:
+                label = before                       # "### Non-Emergency [(626) 914-8250](tel:..)"
             elif raw_after.startswith(("](tel", ")](tel")):
                 label = after                        # link list: "[number](tel:..) Label"
             else:

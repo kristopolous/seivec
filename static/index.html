@@ -27,6 +27,7 @@
       <select id="sim-select" aria-label="Sample call"></select>
       <button class="btn ghost" id="sim-run" type="button">Play sample call</button>
       <button class="btn primary" id="browser-call" type="button" hidden>Call from browser</button>
+      <button class="btn ghost" id="open-stats" type="button" aria-controls="statsview" aria-expanded="false">Stats</button>
       <button class="btn icon" id="open-hood" type="button" aria-controls="hood" aria-expanded="false">Under the hood</button>
     </div>
   </header>
@@ -110,6 +111,25 @@
     <div class="tick"><span class="tick-n" id="s-acc">–</span><span class="tick-l" id="s-acc-l">reviewed accuracy</span></div>
     <ol class="depts" id="s-services"></ol>
   </footer>
+
+  <aside class="statsview" id="statsview" aria-label="Stats" hidden>
+    <div class="hood-head">
+      <h2>Where calls went</h2>
+      <button class="btn ghost" id="close-stats" type="button">Close</button>
+    </div>
+    <div class="sv-ticks" id="sv-ticks"></div>
+    <table class="sv-table">
+      <thead><tr><th>Department</th><th>Service</th><th>Jurisdiction</th><th>Number</th><th class="sv-n">Calls</th></tr></thead>
+      <tbody id="sv-dest"></tbody>
+    </table>
+    <p class="empty small" id="sv-empty">No routed calls yet.</p>
+    <div class="sv-cols">
+      <section><h3 class="sub-title">By service</h3><ol class="sv-bars" id="sv-service"></ol></section>
+      <section><h3 class="sub-title">By jurisdiction</h3><ol class="sv-bars" id="sv-juris"></ol></section>
+      <section><h3 class="sub-title">How the service was decided</h3><ol class="sv-bars" id="sv-method"></ol></section>
+      <section><h3 class="sub-title">How the location was found</h3><ol class="sv-bars" id="sv-place"></ol></section>
+    </div>
+  </aside>
 
   <aside class="hood" id="hood" aria-label="Under the hood" hidden>
     <div class="hood-head">

@@ -8,6 +8,7 @@ Resolution order:
 
 from __future__ import annotations
 
+import difflib
 import logging
 import re
 from typing import Any
@@ -128,7 +129,33 @@ def known_place(location: str) -> dict[str, Any] | None:
         return {"key": "la_city", "name": f"{name} (City of Los Angeles)", "place": name}
     if _find(["Los Angeles", "LA"], loc):
         return {"key": "la_city", "name": "City of Los Angeles", "place": "Los Angeles"}
-    return None
+    return _fuzzy_place(loc, learned)
+
+
+def _fuzzy_place(loc: str, learned: list[str]) -> dict[str, Any] | None:
+    """Speech recognition mangles place names ("Landora" for Glendora). Snap
+    single words and word pairs to the closest known place, if close enough."""
+    words = re.findall(r"[a-z']+", loc)
+    grams = words + [" ".join(words[i:i + 2]) for i in range(len(words) - 1)]
+    tables = [(UNINCORPORATED, "la_county"), (COUNTY_CITIES + learned, "city"), (LA_CITY_NEIGHBORHOODS, "la_city")]
+    best: tuple[float, str, str] | None = None
+    for names, kind in tables:
+        lowered = {n.lower(): n for n in names if len(n) > 4}
+        for g in grams:
+            if len(g) < 5:
+                continue
+            for m in difflib.get_close_matches(g, lowered, n=1, cutoff=0.8):
+                score = difflib.SequenceMatcher(None, g, m).ratio()
+                if not best or score > best[0]:
+                    best = (score, lowered[m], kind)
+    if not best:
+        return None
+    _, name, kind = best
+    if kind == "la_county":
+        return {"key": "la_county", "name": f"{name} (unincorporated LA County)", "place": name, "fuzzy": True}
+    if kind == "city":
+        return {"key": city_key(name), "name": f"City of {name}", "place": name, "fuzzy": True}
+    return {"key": "la_city", "name": f"{name} (City of Los Angeles)", "place": name, "fuzzy": True}
 
 
 def resolve(location: str, guess: dict[str, Any], on_progress=None) -> dict[str, Any]:
@@ -146,9 +173,10 @@ def resolve(location: str, guess: dict[str, Any], on_progress=None) -> dict[str,
     hit = known_place(loc)
     if hit:
         cached = hit["key"] in rules.jurisdictions
-        return {**_kind(hit["key"]), "key": hit["key"], "name": hit["name"],
-                "method": "cached" if cached or hit["key"] in ("la_city", "la_county") else "known city list",
-                "sources": []}
+        method = "cached" if cached or hit["key"] in ("la_city", "la_county") else "known city list"
+        if hit.get("fuzzy"):
+            method += f" (heard \"{loc}\", closest match {hit['place']})"
+        return {**_kind(hit["key"]), "key": hit["key"], "name": hit["name"], "method": method, "sources": []}
 
     from . import websearch
     from .llm import complete_json

@@ -89,6 +89,7 @@ function handle(msg) {
     case "stats":
       state.stats = msg.stats;
       renderStats();
+      if (!$("statsview").hidden) renderStatsView();
       break;
   }
 }
@@ -555,6 +556,7 @@ $("tab-payloads").onclick = () => selectTab("payloads");
 $("tab-audit").onclick = () => selectTab("audit");
 
 async function openHood() {
+  closeStats();
   $("hood").hidden = false;
   $("open-hood").setAttribute("aria-expanded", "true");
   renderConfigPanel(await (await fetch("/api/settings")).json());
@@ -567,6 +569,56 @@ $("close-hood").onclick = closeHood;
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("hood").hidden) closeHood(); });
 $("trace-follow").onchange = renderTraces;
 $("reset-learned").onclick = async () => { await fetch("/api/learned/reset", { method: "POST" }); state.learning.clear(); };
+
+// ---------- stats view ----------
+async function renderStatsView() {
+  const st = await (await fetch("/api/stats")).json();
+  const ticks = [
+    [st.calls, "calls"], [st.handed_off, "forwarded"], [st.emergencies, "sent to 911"],
+    [st.outside_area, "outside the area"], [st.hung_up_early, "hung up before routing"],
+    [st.median_seconds_to_route == null ? "–" : `${st.median_seconds_to_route}s`, "median time to a decision"],
+  ];
+  $("sv-ticks").replaceChildren(...ticks.map(([n, l]) => {
+    const d = el("div", "tick");
+    d.append(el("span", "tick-n", String(n)), el("span", "tick-l", l));
+    return d;
+  }));
+  const max = Math.max(1, ...st.destinations.map((r) => r.count));
+  $("sv-empty").hidden = st.destinations.length > 0;
+  $("sv-dest").replaceChildren(...st.destinations.map((r) => {
+    const tr = el("tr");
+    const dep = el("td", null, r.department);
+    if (r.fallback) dep.append(el("span", "sv-sub", `${r.fallback} via general line`));
+    const meter = el("div", "sv-meter");
+    const bar = el("div", "bar"); bar.style.width = `${(r.count / max) * 100}%`;
+    const wrap = el("div"); wrap.append(bar);
+    meter.append(wrap, el("b", null, String(r.count)));
+    const n = el("td", "sv-n"); n.append(meter, el("span", "sv-sub", `${r.live} live, ${r.sample} sample`));
+    tr.append(dep, el("td", null, r.service), el("td", null, r.jurisdiction || ""), el("td", null, r.phone || ""), n);
+    return tr;
+  }));
+  const bars = (id, rows) => {
+    const m = Math.max(1, ...rows.map((r) => r.count));
+    $(id).replaceChildren(...rows.map((r) => {
+      const li = el("li");
+      const b = el("span", "bar"); b.style.width = `${(r.count / m) * 100}%`;
+      li.append(el("span", null, r.label), el("b", null, String(r.count)), b);
+      return li;
+    }));
+  };
+  bars("sv-service", st.by_service); bars("sv-juris", st.by_jurisdiction);
+  bars("sv-method", st.by_method); bars("sv-place", st.by_place_method);
+}
+const closeStats = () => { $("statsview").hidden = true; $("open-stats").setAttribute("aria-expanded", "false"); };
+$("open-stats").onclick = () => {
+  if (!$("statsview").hidden) return closeStats();
+  closeHood();
+  $("statsview").hidden = false;
+  $("open-stats").setAttribute("aria-expanded", "true");
+  renderStatsView();
+};
+$("close-stats").onclick = closeStats;
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("statsview").hidden) closeStats(); });
 
 // ---------- sample calls ----------
 async function loadScenarios() {
