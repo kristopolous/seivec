@@ -189,7 +189,8 @@ function renderCalls() {
     row.dataset.id = c.id;
     const who = el("span", "log-who", c.caller ? fmtPhone(c.caller) : c.channel === "browser" ? "Browser caller" : "Caller");
     if (c.simulated) who.append(el("span", "tag", "sample"));
-    const [label, kind] = BADGES[c.status] || ["Ended", "muted"];
+    const [label, kind] = c.decision?.escalated && ["handoff", "transferred", "transferring"].includes(c.status)
+      ? ["To 311", "ok"] : (BADGES[c.status] || ["Ended", "muted"]);
     row.append(
       el("span", "log-time", new Date(c.started_at * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })),
       who, el("span", `badge ${kind}`, label), el("span", "log-what", outcomeText(c)),

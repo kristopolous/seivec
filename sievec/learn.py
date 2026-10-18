@@ -190,7 +190,7 @@ SEARCH_TERMS = {
     "homeless": "homeless outreach", "renter": "tenant landlord help", "code_violation": "code enforcement",
     "power_water": "water utility", "restaurant": "restaurant health complaint", "food_illness": "food poisoning report",
     "mosquitoes": "vector control mosquitoes", "freeway": "caltrans", "fire_hazard": "fire department non-emergency",
-    "social_services": "social services", "general": "city hall",
+    "social_services": "social services", "general": "311 city services",
 }
 
 

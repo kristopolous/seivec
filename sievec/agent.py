@@ -6,7 +6,7 @@ import logging
 import re
 
 import guava
-from guava.events import AgentSpeechEvent, BotSessionEnded, CallerSpeechEvent
+from guava.events import AgentSpeechEvent, BotSessionEnded, CallerSpeechEvent, EscalateEvent
 from guava.types.call_info import PSTNCallInfo, WebRTCCallInfo
 
 from . import flow, history, places
@@ -19,8 +19,9 @@ agent = guava.Agent(
     name="Rosa",
     organization="Sievec, the Los Angeles city and county services line",
     purpose=(
-        "Answer one number for every non-emergency city and county service in Los Angeles County. "
-        "Confirm where the problem is, find out what the caller needs, and connect them to the office that handles it."
+        "Answer one number for every non-emergency city and county service. Based in Los Angeles, but it looks up "
+        "the right office for any city, anywhere. Confirm where the problem is, find out what the caller needs, "
+        "and connect them to the office that handles it."
     ),
     # Say "Los Angeles", never "L.A.": the voice reads "LA" as Louisiana.
     pronunciations={"Sievec": "civix", "LA": "Los Angeles", "L.A.": "Los Angeles", "LADOT": "L A dot",
@@ -65,7 +66,9 @@ def on_call_start(call: guava.Call) -> None:
             "where. Keep it short and warm. If they already said the problem, don't make them repeat it. "
             "If they mention an accident, a fall, or anything where someone could be hurt, ask whether anyone "
             "is injured; if so, tell them to hang up and dial nine-one-one now. Never promise when a crew will arrive. "
-            "Always say \"Los Angeles\" in full, never \"L.A.\""
+            "Always say \"Los Angeles\" in full, never \"L.A.\" "
+            "Never tell a caller you can't help because of where they are: if the problem is in another city "
+            "(even outside California), just record that city; the system looks up the right office there."
         ),
         checklist=[
             guava.Field(
@@ -134,6 +137,49 @@ def adjust_speed(call: guava.Call, event: CallerSpeechEvent) -> None:
     bus._update(call.id, "call", speech_speed=new)
 
 
+WANTS_HUMAN = re.compile(
+    r"\b(hate (ai|a\.i\.|robots?|bots?|this)|(talk|speak) to (a |an )?(real |actual |live )?(person|human|someone)|"
+    r"real person|human being|representative|operator|not a (robot|bot|machine)|stop (being )?(a )?robot|"
+    r"is this (a |an )?(robot|bot|ai|recording))\b", re.I)
+
+
+def escalate_to_311(call: guava.Call, why: str) -> None:
+    """Fallback for callers who don't want an AI: forward them to 311 for
+    their place (MyLA311 for Los Angeles, or the other city's general line)."""
+    if call.get_variable("escalated"):
+        return
+    call.set_variable("escalated", why)
+    snap = bus.get(call.id) or {}
+    place = (snap.get("decision") or {}).get("place") or {}
+    key = place.get("key") or (call.get_variable("guess") or {}).get("key") or "la_city"
+    if key.startswith("city:") and rules.lookup("general", key):
+        cell, where = rules.lookup("general", key), place.get("name", "their city")
+    else:
+        cell, where = rules.lookup("general", "la_city"), "Los Angeles"
+    decision = {"category": {"id": "general", "label": "A person at 311", "method": f"caller asked for a human ({why})"},
+                "place": place or {"key": "la_city", "name": "Los Angeles"}, "cell": cell,
+                "rule": f"Caller wants a person → 311 ({where})", "escalated": True}
+    bus.annotate(call.id, f"Caller asked for a person ({why}). Forwarding to {cell['department']}, "
+                          f"{cell['phone_display']}.", "urgent")
+    bus.step(call.id, "rule", "done", cell["department"], decision["rule"])
+    target = flow.transfer_target(cell)
+    bus.step(call.id, "connect", "active", cell.get("phone_display"), "Forwarding to a person")
+    bus.status(call.id, "transferring", decision=decision,
+               transfer={"mode": flow.TRANSFER_MODE, "to": target, "department_phone": cell.get("phone")})
+    line = (f"Say: \"No problem. I'll connect you with a person at 311. Their number is {cell['phone_display']} "
+            f"if we get cut off.\"")
+    if target:
+        call.transfer(target, line + " Then transfer.")
+    else:
+        call.hangup(line + " Then end the call politely.")
+
+
+@agent.on_escalate
+def on_escalate(call: guava.Call, event: EscalateEvent) -> None:
+    escalate_to_311(call, "Guava escalation: requested by the caller" if event.requested_by == "human"
+                    else "Guava escalation: agent couldn't help")
+
+
 def mark_emergency(call: guava.Call, why: str, warn: bool) -> None:
     """Flag the call as an emergency (once). The call is logged as 911 even if
     the caller simply hangs up to go dial it."""
@@ -160,6 +206,9 @@ def on_caller_speech(call: guava.Call, event: CallerSpeechEvent) -> None:
     bus.lanes(call.id, lanes)
     flow.schedule_system1(call.id, text)
     adjust_speed(call, event)
+    if (h := WANTS_HUMAN.search(event.utterance)) and not emergency_in(event.utterance):
+        escalate_to_311(call, f'caller said "{h.group(0)}"')
+        return
     danger = emergency_in(event.utterance)
     if danger:
         set_urgent(call, f'emergency: "{danger}"')
@@ -209,7 +258,7 @@ def on_session_end(call: guava.Call, event: BotSessionEnded) -> None:
         bus.status(call.id, "transferred")
     elif call.get_variable("emergency"):
         pass  # stays "emergency"; bus.ended keeps it
-    elif snap.get("status") == "transferring" and flow.TRANSFER_MODE == "handoff":
+    elif snap.get("status") == "transferring" and (flow.TRANSFER_MODE == "handoff" or call.get_variable("escalated")):
         cell = (snap.get("decision") or {}).get("cell") or {}
         bus.step(call.id, "connect", "done", cell.get("phone_display"), "Handoff briefing ready")
         bus.status(call.id, "handoff")

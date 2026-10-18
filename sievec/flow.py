@@ -186,13 +186,14 @@ def _decide(call_id, service_value, location, transcript, guess, say) -> Outcome
                  if cat["id"] == "gas_leak" else "")
         return Outcome("hangup", instructions=f"Tell the caller to hang up and dial nine-one-one right now.{extra}")
 
-    if place["kind"] == "outside" or not place.get("key"):
-        bus.step(call_id, "rule", "done", "Outside LA County")
-        bus.step(call_id, "connect", "done", "No transfer")
+    if not place.get("key"):
+        # We couldn't pin the place down at all: ask for it rather than refuse.
+        bus.step(call_id, "rule", "done", "Need a city")
+        bus.step(call_id, "connect", "done", "Asked again")
         bus.status(call_id, "no-match", decision=decision)
         return Outcome("hangup", instructions=(
-            f"Explain that this line covers Los Angeles County, and {place['name']} is outside it. "
-            "Suggest calling their own city hall, then say goodbye."))
+            "Apologize that you couldn't place that location, give them the number for 2-1-1 for general help, "
+            "and invite them to call back with the city name."))
 
     # 3. Rule lookup. A missing cell is filled by searching
     #    "<place> <service> phone number" and stored in the rules.
@@ -216,7 +217,11 @@ def _decide(call_id, service_value, location, transcript, guess, say) -> Outcome
         if cell is None and rules.lookup("general", key) is None:
             bus.step(call_id, "rule", "active", f"{category['label']} × {place['name']}",
                      f'Nothing found. Searching "{learn.search_query(city, "general")}"')
-            learn.learn_service(key, city, "general", learn_progress)
+            gen = learn.learn_service(key, city, "general", learn_progress)
+            gq = learn.search_query(city, "general")
+            bus.annotate(call_id, (f"Searched \"{gq}\" → {gen['department']}, {gen['phone_display']} "
+                                   f"(the city's general line). Saved to the rules." if gen
+                                   else f"Searched \"{gq}\": nothing found."), "learned" if gen else "search")
     fallback = False
     if cell is None and place["kind"] == "other_city":
         cell, fallback = rules.lookup("general", key), True

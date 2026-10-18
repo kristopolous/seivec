@@ -190,7 +190,7 @@ def resolve(location: str, guess: dict[str, Any], on_progress=None) -> dict[str,
     evidence = "\n".join(f"[{r['title']}] {r['text'][:600]}" for r in results) or "(no results)"
     schema = {"type": "object", "properties": {
         "kind": {"type": "string", "enum": ["la_city", "la_county_unincorporated", "other_city", "outside_county", "unknown"]},
-        "city_name": {"type": "string", "description": "Incorporated city name if other_city, else empty"},
+        "city_name": {"type": "string", "description": "The city it's in, for other_city or outside_county (e.g. San Francisco)"},
         "explanation": {"type": "string"}}, "required": ["kind", "city_name", "explanation"]}
     try:
         out, _ = complete_json(
@@ -206,6 +206,10 @@ def resolve(location: str, guess: dict[str, Any], on_progress=None) -> dict[str,
     elif kind == "la_county_unincorporated":
         res = {"key": "la_county", "name": f"{loc} (unincorporated LA County)"}
     elif kind == "other_city" and out.get("city_name"):
+        name = out["city_name"].replace("City of ", "").strip()
+        res = {"key": city_key(name), "name": f"City of {name}"}
+    elif kind == "outside_county" and out.get("city_name"):
+        # Outside LA County is still just a city whose offices we look up.
         name = out["city_name"].replace("City of ", "").strip()
         res = {"key": city_key(name), "name": f"City of {name}"}
     elif kind == "outside_county":
