@@ -1,0 +1,39 @@
+{
+ "key": "city:beverly_hills",
+ "name": "City of Beverly Hills",
+ "short": "Beverly Hills",
+ "learned_at": 1792281541.0365038,
+ "cells": {
+  "general": {
+   "id": "city:beverly_hills:general",
+   "jurisdiction": "city:beverly_hills",
+   "department": "City Hall",
+   "service": "Something else",
+   "phone": "+13102851000",
+   "phone_display": "(310) 285-1000",
+   "hours": "",
+   "notes": "Main city hall line",
+   "description": "Learned from www.beverlyhills.org.",
+   "source_url": "https://www.beverlyhills.org/Directory.aspx?did=53",
+   "source_text": "/559/Public-Works) Physical Address 345 Foothill Road Beverly Hills, CA 90210 Phone Number [NUMBER] (tel",
+   "verified": false,
+   "learned": true
+  },
+  "police_report": {
+   "id": "city:beverly_hills:police_report",
+   "jurisdiction": "city:beverly_hills",
+   "department": "Identification Bureau",
+   "service": "Police non-emergency",
+   "phone": "+13102852114",
+   "phone_display": "(310) 285-2114",
+   "hours": "",
+   "notes": "Police non-emergency / ID bureau",
+   "description": "Learned from www.beverlyhills.org.",
+   "source_url": "https://www.beverlyhills.org/directory.aspx",
+   "source_text": "hills.org/m/directory/department?did=91) Email the Identification Bureau [NUMBER] 285-2114,) IDENTIFICATION BUREAU",
+   "verified": false,
+   "learned": true
+  }
+ },
+ "complete": true
+}

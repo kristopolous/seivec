@@ -1,0 +1,744 @@
+{
+ "version": 1,
+ "jurisdictions": {
+  "la_city": {
+   "name": "City of Los Angeles",
+   "short": "City of LA",
+   "kind": "city"
+  },
+  "la_county": {
+   "name": "Unincorporated LA County",
+   "short": "LA County",
+   "kind": "county"
+  }
+ },
+ "categories": [
+  {
+   "id": "emergency",
+   "label": "Emergency",
+   "emergency": true,
+   "keywords": [
+    "emergency",
+    "someone is hurt",
+    "fire",
+    "car crash with injuries",
+    "crime in progress",
+    "break in happening now",
+    "someone is not breathing",
+    "gun",
+    "heart attack",
+    "house on fire",
+    "downed power line sparking",
+    "gas explosion",
+    "flood rescue",
+    "being attacked"
+   ],
+   "description": "Emergency"
+  },
+  {
+   "id": "gas_leak",
+   "label": "Gas leak",
+   "emergency": true,
+   "keywords": [
+    "smell gas",
+    "gas leak",
+    "rotten egg smell",
+    "gas line hit",
+    "hissing gas",
+    "carbon monoxide",
+    "gas meter leaking",
+    "gas smell outside",
+    "natural gas",
+    "pilot light"
+   ],
+   "description": "Gas leak"
+  },
+  {
+   "id": "dead_animal",
+   "label": "Dead animal pickup",
+   "emergency": false,
+   "keywords": [
+    "dead animal",
+    "dead possum",
+    "dead cat in the street",
+    "dead dog",
+    "roadkill",
+    "dead raccoon",
+    "dead bird",
+    "dead skunk",
+    "dead coyote",
+    "animal carcass",
+    "dead rat",
+    "something died in my yard"
+   ],
+   "description": "Dead animal pickup"
+  },
+  {
+   "id": "live_animal",
+   "label": "Stray or wild animal",
+   "emergency": false,
+   "keywords": [
+    "stray dog",
+    "loose dog",
+    "dog running around",
+    "injured animal",
+    "coyote in my yard",
+    "raccoon in my attic",
+    "wild animal",
+    "injured bird",
+    "animal cruelty",
+    "dog left in hot car",
+    "dangerous dog",
+    "dog bite",
+    "lost my pet",
+    "found a dog",
+    "animal control",
+    "possum under the house"
+   ],
+   "description": "Live animals: stray, loose, injured, wildlife"
+  },
+  {
+   "id": "barking_dog",
+   "label": "Barking dog",
+   "emergency": false,
+   "keywords": [
+    "barking dog",
+    "dog barking all night",
+    "neighbor's dog won't stop barking",
+    "noisy dog",
+    "dog howling",
+    "barking complaint",
+    "dog keeps me up",
+    "dog noise"
+   ],
+   "description": "Nuisance barking dog"
+  },
+  {
+   "id": "bulky_item",
+   "label": "Bulky item pickup",
+   "emergency": false,
+   "keywords": [
+    "bulky item pickup",
+    "couch on the curb",
+    "old mattress",
+    "get rid of a couch",
+    "furniture pickup",
+    "old fridge",
+    "throw away a sofa",
+    "big trash pickup",
+    "old tv",
+    "e-waste pickup",
+    "carpet pickup",
+    "appliance pickup",
+    "junk removal",
+    "dresser on the sidewalk"
+   ],
+   "description": "Bulky item pickup"
+  },
+  {
+   "id": "missed_trash",
+   "label": "Missed trash pickup",
+   "emergency": false,
+   "keywords": [
+    "missed trash pickup",
+    "they didn't pick up my trash",
+    "garbage not collected",
+    "recycling not picked up",
+    "green bin missed",
+    "trash truck skipped us",
+    "broken trash can",
+    "need a new bin",
+    "replace my black bin",
+    "stolen trash can",
+    "missed collection"
+   ],
+   "description": "Missed trash / recycling collection"
+  },
+  {
+   "id": "illegal_dumping",
+   "label": "Illegal dumping",
+   "emergency": false,
+   "keywords": [
+    "illegal dumping",
+    "someone dumped trash",
+    "pile of junk in the alley",
+    "dumped mattress",
+    "trash on the sidewalk",
+    "abandoned furniture",
+    "dumped tires",
+    "debris in the street",
+    "garbage dumped on the corner",
+    "people dumping",
+    "junk left on my street"
+   ],
+   "description": "Illegal dumping cleanup"
+  },
+  {
+   "id": "pothole",
+   "label": "Pothole or road damage",
+   "emergency": false,
+   "keywords": [
+    "pothole",
+    "big hole in the road",
+    "hole in the street",
+    "road is broken",
+    "cracked pavement",
+    "street needs repaving",
+    "sinkhole",
+    "road hazard",
+    "bump in the road",
+    "damaged street",
+    "asphalt broken"
+   ],
+   "description": "Pothole / street repair"
+  },
+  {
+   "id": "sidewalk",
+   "label": "Broken sidewalk",
+   "emergency": false,
+   "keywords": [
+    "broken sidewalk",
+    "sidewalk lifted by tree roots",
+    "trip hazard",
+    "cracked sidewalk",
+    "uneven sidewalk",
+    "curb is broken",
+    "sidewalk repair",
+    "something blocking the sidewalk",
+    "fell on the sidewalk",
+    "ramp is broken"
+   ],
+   "description": "Sidewalk repair / street obstruction"
+  },
+  {
+   "id": "tree",
+   "label": "Tree trimming or fallen tree",
+   "emergency": false,
+   "keywords": [
+    "tree trimming",
+    "tree fell down",
+    "fallen tree",
+    "tree branch hanging",
+    "limb fell on my car",
+    "tree blocking the street",
+    "dead tree",
+    "tree roots",
+    "tree about to fall",
+    "trim the tree",
+    "palm fronds falling",
+    "broken branch"
+   ],
+   "description": "Street tree emergency / trimming"
+  },
+  {
+   "id": "traffic_signal",
+   "label": "Traffic signal or stop sign",
+   "emergency": false,
+   "keywords": [
+    "broken stoplight",
+    "traffic light is out",
+    "signal is dark",
+    "stoplight not working",
+    "light is stuck on red",
+    "traffic signal knocked down",
+    "stop sign missing",
+    "stop sign knocked over",
+    "intersection lights out",
+    "flashing red light",
+    "traffic light blinking"
+   ],
+   "description": "Traffic signal out / knocked down (urgent)"
+  },
+  {
+   "id": "streetlight",
+   "label": "Streetlight out",
+   "emergency": false,
+   "keywords": [
+    "streetlight out",
+    "light is out",
+    "street light not working",
+    "street lamp broken",
+    "dark street",
+    "light flickering",
+    "streetlight on during the day",
+    "exposed wires on light pole",
+    "light pole knocked down",
+    "whole block is dark"
+   ],
+   "description": "Streetlight out"
+  },
+  {
+   "id": "sewer_flooding",
+   "label": "Sewer, storm drain or flooding",
+   "emergency": false,
+   "keywords": [
+    "sewer overflow",
+    "sewage in the street",
+    "sewer smell",
+    "clogged storm drain",
+    "flooded street",
+    "water flooding the alley",
+    "catch basin clogged",
+    "manhole overflowing",
+    "sewer backup",
+    "bad smell from the sewer",
+    "oil in the gutter"
+   ],
+   "description": "Sewer overflow / clogged storm drain / street flooding"
+  },
+  {
+   "id": "graffiti",
+   "label": "Graffiti",
+   "emergency": false,
+   "keywords": [
+    "graffiti",
+    "tagging on my wall",
+    "spray paint on the building",
+    "someone tagged my fence",
+    "gang graffiti",
+    "paint over graffiti",
+    "vandalism on the wall",
+    "graffiti on a sign",
+    "tags on the bridge",
+    "writing on the wall"
+   ],
+   "description": "Graffiti removal"
+  },
+  {
+   "id": "abandoned_vehicle",
+   "label": "Abandoned vehicle",
+   "emergency": false,
+   "keywords": [
+    "abandoned car",
+    "car hasn't moved in weeks",
+    "junk car on my street",
+    "abandoned vehicle",
+    "car with flat tires sitting there",
+    "abandoned rv",
+    "dumped car",
+    "car parked for months",
+    "stripped car",
+    "car with no plates"
+   ],
+   "description": "Abandoned vehicle"
+  },
+  {
+   "id": "parking",
+   "label": "Parking violation",
+   "emergency": false,
+   "keywords": [
+    "blocked driveway",
+    "car blocking my driveway",
+    "someone parked in front of my garage",
+    "illegally parked car",
+    "parked in red zone",
+    "car in the bike lane",
+    "parking violation",
+    "double parked",
+    "parked on the sidewalk",
+    "oversized vehicle parked"
+   ],
+   "description": "Parking enforcement dispatch"
+  },
+  {
+   "id": "parking_ticket",
+   "label": "Parking ticket or signal timing",
+   "emergency": false,
+   "keywords": [
+    "parking ticket",
+    "contest a parking citation",
+    "pay my ticket",
+    "parking citation",
+    "signal timing",
+    "new crosswalk request",
+    "speed bump request",
+    "traffic light too short",
+    "ladot",
+    "pedestrian signal broken",
+    "walk signal not working"
+   ],
+   "description": "LADOT customer care (routine signal requests, parking citations)"
+  },
+  {
+   "id": "noise",
+   "label": "Noise complaint",
+   "emergency": false,
+   "keywords": [
+    "noise complaint",
+    "loud party",
+    "loud music next door",
+    "neighbors partying",
+    "fireworks",
+    "leaf blower early morning",
+    "car alarm going off",
+    "loud construction at night",
+    "people yelling outside",
+    "bass too loud",
+    "helicopter noise",
+    "noisy neighbors"
+   ],
+   "description": "Noise complaint (party, loud music)"
+  },
+  {
+   "id": "police_report",
+   "label": "Police non-emergency",
+   "emergency": false,
+   "keywords": [
+    "police non emergency",
+    "report a crime that already happened",
+    "car got broken into",
+    "stolen bike",
+    "suspicious person",
+    "someone sleeping in my car",
+    "package stolen",
+    "catalytic converter stolen",
+    "need a police report",
+    "vandalized my car",
+    "street racing",
+    "drug dealing"
+   ],
+   "description": "Police non-emergency"
+  },
+  {
+   "id": "homeless",
+   "label": "Homeless outreach",
+   "emergency": false,
+   "keywords": [
+    "homeless person needs help",
+    "encampment",
+    "someone living on the street",
+    "homeless outreach",
+    "tent on the sidewalk",
+    "person sleeping outside",
+    "homeless shelter",
+    "need a place to stay",
+    "unhoused neighbor",
+    "rv encampment",
+    "help a homeless person"
+   ],
+   "description": "Homeless outreach (LA-HOP)"
+  },
+  {
+   "id": "renter",
+   "label": "Landlord or renter issue",
+   "emergency": false,
+   "keywords": [
+    "landlord won't fix",
+    "eviction",
+    "rent increase",
+    "tenant rights",
+    "no hot water in my apartment",
+    "cockroaches in my apartment",
+    "mold in my unit",
+    "rent control",
+    "landlord harassment",
+    "apartment repairs",
+    "eviction notice"
+   ],
+   "description": "Renter / landlord issues and rental code complaints"
+  },
+  {
+   "id": "code_violation",
+   "label": "Building or code violation",
+   "emergency": false,
+   "keywords": [
+    "code violation",
+    "illegal construction",
+    "building without a permit",
+    "unsafe building",
+    "illegal garage conversion",
+    "overgrown vacant lot",
+    "abandoned house",
+    "construction noise early",
+    "fence too tall",
+    "illegal business in a house",
+    "neighbor building illegally"
+   ],
+   "description": "Building / code enforcement complaint"
+  },
+  {
+   "id": "power_water",
+   "label": "Power outage or water main break",
+   "emergency": false,
+   "keywords": [
+    "power outage",
+    "lights went out",
+    "no electricity",
+    "water main break",
+    "water gushing from the street",
+    "no water",
+    "low water pressure",
+    "power line down",
+    "transformer blew",
+    "fire hydrant leaking",
+    "electricity out",
+    "water leak in the street",
+    "brown water",
+    "water main"
+   ],
+   "description": "Power outage / water main break / downed lines"
+  },
+  {
+   "id": "restaurant",
+   "label": "Restaurant, rats or roaches",
+   "emergency": false,
+   "keywords": [
+    "restaurant complaint",
+    "dirty restaurant",
+    "saw a rat in a restaurant",
+    "food truck complaint",
+    "rats",
+    "rodents",
+    "cockroaches",
+    "unsanitary kitchen",
+    "health inspector",
+    "no health permit",
+    "bed bugs",
+    "sewage in my yard",
+    "trash piling up smell"
+   ],
+   "description": "Restaurant / food / housing / rodent complaints"
+  },
+  {
+   "id": "food_illness",
+   "label": "Food poisoning",
+   "emergency": false,
+   "keywords": [
+    "food poisoning",
+    "got sick after eating",
+    "sick from a restaurant",
+    "bad food made me sick",
+    "stomach sick after dinner",
+    "food illness",
+    "throwing up after eating",
+    "multiple people got sick"
+   ],
+   "description": "Foodborne illness report"
+  },
+  {
+   "id": "mosquitoes",
+   "label": "Mosquitoes or standing water",
+   "emergency": false,
+   "keywords": [
+    "mosquitoes",
+    "lots of mosquitoes",
+    "mosquito bites",
+    "green pool",
+    "neglected swimming pool",
+    "standing water",
+    "west nile",
+    "black flies",
+    "midges",
+    "bugs breeding",
+    "ankle biter mosquitoes",
+    "stagnant water"
+   ],
+   "description": "Mosquitoes / black flies / midges"
+  },
+  {
+   "id": "freeway",
+   "label": "Freeway or on-ramp problem",
+   "emergency": false,
+   "keywords": [
+    "freeway pothole",
+    "debris on the freeway",
+    "freeway graffiti",
+    "on-ramp",
+    "off ramp",
+    "highway sign down",
+    "freeway trash",
+    "caltrans",
+    "sound wall",
+    "freeway light out",
+    "highway"
+   ],
+   "description": "Freeway / state highway maintenance"
+  },
+  {
+   "id": "fire_hazard",
+   "label": "Fire hazard or brush clearance",
+   "emergency": false,
+   "keywords": [
+    "fire department non emergency",
+    "fire inspection",
+    "brush clearance",
+    "fire hazard",
+    "smoke detector",
+    "fire code question",
+    "weeds fire hazard",
+    "blocked fire exit",
+    "lafd",
+    "fire safety question"
+   ],
+   "description": "Fire department general / non-emergency"
+  },
+  {
+   "id": "social_services",
+   "label": "Food, shelter or bill help",
+   "emergency": false,
+   "keywords": [
+    "211",
+    "need food",
+    "food bank",
+    "need shelter",
+    "homeless shelter",
+    "rent help",
+    "utility bill help",
+    "mental health resources",
+    "domestic violence help",
+    "senior services",
+    "help with bills",
+    "where do i go",
+    "county services",
+    "free clinic"
+   ],
+   "description": "Social services, shelter, general county info"
+  },
+  {
+   "id": "general",
+   "label": "Something else",
+   "emergency": false,
+   "keywords": [
+    "311",
+    "city services",
+    "city hall",
+    "i don't know who to call",
+    "general question",
+    "report a problem",
+    "city of los angeles",
+    "service request",
+    "myla311",
+    "complaint to the city",
+    "something on my street",
+    "help from the city"
+   ],
+   "description": "General city services (fallback)"
+  }
+ ],
+ "table": {
+  "emergency": {
+   "la_city": "emergency_911",
+   "la_county": "emergency_911"
+  },
+  "gas_leak": {
+   "la_city": "socalgas",
+   "la_county": "socalgas"
+  },
+  "dead_animal": {
+   "la_city": "lasan_dead_animal",
+   "la_county": "dacc_south"
+  },
+  "live_animal": {
+   "la_city": "la_animal_services",
+   "la_county": "dacc_south"
+  },
+  "barking_dog": {
+   "la_city": "la_animal_services_barking",
+   "la_county": "dacc_south"
+  },
+  "bulky_item": {
+   "la_city": "lasan_bulky_item",
+   "la_county": "lacounty_public_works"
+  },
+  "missed_trash": {
+   "la_city": "lasan_missed_collection",
+   "la_county": "lacounty_public_works"
+  },
+  "illegal_dumping": {
+   "la_city": "lasan_illegal_dumping",
+   "la_county": "lacounty_public_works"
+  },
+  "pothole": {
+   "la_city": "streetsla_pothole",
+   "la_county": "lacounty_public_works"
+  },
+  "sidewalk": {
+   "la_city": "streetsla_sidewalk",
+   "la_county": "lacounty_public_works"
+  },
+  "tree": {
+   "la_city": "streetsla_urban_forestry",
+   "la_county": "lacounty_public_works"
+  },
+  "traffic_signal": {
+   "la_city": "ladot_signal_emergency",
+   "la_county": "lacounty_public_works"
+  },
+  "streetlight": {
+   "la_city": "street_lighting",
+   "la_county": "lacounty_public_works"
+  },
+  "sewer_flooding": {
+   "la_city": "lasan_sewer_storm_drain",
+   "la_county": "lacounty_public_works"
+  },
+  "graffiti": {
+   "la_city": "graffiti_city",
+   "la_county": "lacounty_public_works"
+  },
+  "abandoned_vehicle": {
+   "la_city": "ladot_abandoned_vehicle",
+   "la_county": "lasd_general"
+  },
+  "parking": {
+   "la_city": "ladot_parking_enforcement",
+   "la_county": "lasd_general"
+  },
+  "parking_ticket": {
+   "la_city": "ladot_customer_care",
+   "la_county": "lasd_general"
+  },
+  "noise": {
+   "la_city": "noise_city",
+   "la_county": "lasd_general"
+  },
+  "police_report": {
+   "la_city": "lapd_non_emergency",
+   "la_county": "lasd_general"
+  },
+  "homeless": {
+   "la_city": "lahsa",
+   "la_county": "lahsa"
+  },
+  "renter": {
+   "la_city": "lahd_renters",
+   "la_county": "la211"
+  },
+  "code_violation": {
+   "la_city": "ladbs_code_enforcement",
+   "la_county": "lacounty_regional_planning_enforcement"
+  },
+  "power_water": {
+   "la_city": "ladwp",
+   "la_county": "sce"
+  },
+  "restaurant": {
+   "la_city": "dph_environmental_health",
+   "la_county": "dph_environmental_health"
+  },
+  "food_illness": {
+   "la_city": "dph_foodborne_illness",
+   "la_county": "dph_foodborne_illness"
+  },
+  "mosquitoes": {
+   "la_city": "glacvcd_vector",
+   "la_county": "glacvcd_vector"
+  },
+  "freeway": {
+   "la_city": "caltrans_d7",
+   "la_county": "caltrans_d7"
+  },
+  "fire_hazard": {
+   "la_city": "lafd_non_emergency",
+   "la_county": "county_fire_non_emergency"
+  },
+  "social_services": {
+   "la_city": "la211",
+   "la_county": "la211"
+  },
+  "general": {
+   "la_city": "myla311",
+   "la_county": "la211"
+  }
+ }
+}

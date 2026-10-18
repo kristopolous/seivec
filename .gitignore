@@ -1,0 +1,8 @@
+.env
+.venv/
+__pycache__/
+data/calls.jsonl
+data/feedback.jsonl
+data/audit.jsonl
+data/learned/
+data/learned_phrases.json

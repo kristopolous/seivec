@@ -1,0 +1,24 @@
+{
+ "key": "city:culver_city",
+ "name": "City of Culver City",
+ "short": "Culver City",
+ "learned_at": 1792281518.0299428,
+ "cells": {
+  "general": {
+   "id": "city:culver_city:general",
+   "jurisdiction": "city:culver_city",
+   "department": "City Hall",
+   "service": "Something else",
+   "phone": "+13102536000",
+   "phone_display": "(310) 253-6000",
+   "hours": "",
+   "notes": "Main city hall line",
+   "description": "Learned from www.culvercity.gov.",
+   "source_url": "https://www.culvercity.gov/Contact-Us/Contact-Culver-City",
+   "source_text": "Culver City Back to top City of Culver Seal Contact Us Telephone [NUMBER] City of Culver City - City Hall 9770 Culver Blvd. Culver City, CA 90232 Connect with Us",
+   "verified": false,
+   "learned": true
+  }
+ },
+ "complete": true
+}

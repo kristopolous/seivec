@@ -1,0 +1,24 @@
+{
+ "key": "city:torrance",
+ "name": "City of Torrance",
+ "short": "Torrance",
+ "learned_at": 1792281543.2878098,
+ "cells": {
+  "general": {
+   "id": "city:torrance:general",
+   "jurisdiction": "city:torrance",
+   "department": "City Hall",
+   "service": "Something else",
+   "phone": "+13103285310",
+   "phone_display": "(310) 328-5310",
+   "hours": "",
+   "notes": "Contact Us",
+   "description": "Learned from www.torranceca.gov.",
+   "source_url": "https://www.torranceca.gov/City-Services",
+   "source_text": "Contact Us 3031 Torrance Blvd. Torrance, CA 90503 View on Map P [NUMBER] %20328-5310) Contact Us Site Fo",
+   "verified": false,
+   "learned": true
+  }
+ },
+ "complete": true
+}

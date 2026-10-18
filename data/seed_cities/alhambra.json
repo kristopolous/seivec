@@ -1,0 +1,39 @@
+{
+ "key": "city:alhambra",
+ "name": "City of Alhambra",
+ "short": "Alhambra",
+ "learned_at": 1792281545.7089999,
+ "cells": {
+  "graffiti": {
+   "id": "city:alhambra:graffiti",
+   "jurisdiction": "city:alhambra",
+   "department": "City Yard",
+   "service": "Graffiti",
+   "phone": "+16262891220",
+   "phone_display": "(626) 289-1220",
+   "hours": "",
+   "notes": "24-Hour Graffiti Hotline",
+   "description": "Learned from www.alhambraca.gov.",
+   "source_url": "https://www.alhambraca.gov/Directory.aspx?did=36",
+   "source_text": "Alhambra Community Transit (ACT) Phone [NUMBER] Link: ACT Page City Yard / 24-Hour Graffiti Hotline Phone",
+   "verified": false,
+   "learned": true
+  },
+  "general": {
+   "id": "city:alhambra:general",
+   "jurisdiction": "city:alhambra",
+   "department": "City Hall",
+   "service": "Something else",
+   "phone": "+16265705007",
+   "phone_display": "(626) 570-5007",
+   "hours": "",
+   "notes": "Main City Hall line",
+   "description": "Learned from www.alhambraca.gov.",
+   "source_url": "https://www.alhambraca.gov/Directory.aspx?did=36",
+   "source_text": " Contact Info 1. City of Alhambra 2. 111 South First Street 3. Alhambra, CA 91801 4. Phone [NUMBER] 1. City Hall Hours: 2. Monday through Thursday 3. 7 am to 5:30 pm Helpful Links (https",
+   "verified": false,
+   "learned": true
+  }
+ },
+ "complete": true
+}

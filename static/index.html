@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sievec</title>
+  <link rel="icon" type="image/png" href="/static/civit.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:ital,wght@0,400;0,600;0,800;1,400&family=Overpass+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/app.css">
+  <script
+    src="https://cdn.jsdelivr.net/npm/@guava-ai/guava-sdk@0.38.0/dist/guava-webrtc.min.js"
+    integrity="sha384-6MN0aBFnGuNmEmoeTtbYR4z0Irx2sJ26LYWjUOUyrKlAnAugcZRQOIpnpNz3zAo5"
+    crossorigin="anonymous" defer></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <img class="brand-logo" src="/static/civit.png" alt="" width="29" height="40">
+      <span class="brand-name">Sievec</span>
+      <span class="brand-sub">Routes you right when time is tight</span>
+    </div>
+    <div class="line-info" id="line-info"></div>
+    <div class="actions">
+      <select id="sim-select" aria-label="Sample call"></select>
+      <button class="btn ghost" id="sim-run" type="button">Play sample call</button>
+      <button class="btn primary" id="browser-call" type="button" hidden>Call from browser</button>
+      <button class="btn icon" id="open-hood" type="button" aria-controls="hood" aria-expanded="false">Under the hood</button>
+    </div>
+  </header>
+
+  <main class="board">
+    <aside class="calls" aria-label="Calls">
+      <h2 class="col-title">Calls</h2>
+      <ol id="call-list" class="call-list"></ol>
+      <p class="empty" id="calls-empty">No calls yet. Dial the line, call from the browser, or play a sample call.</p>
+    </aside>
+
+    <section class="talk" aria-label="Live call">
+      <ol class="pipeline" id="pipeline" aria-label="Routing steps"></ol>
+      <div class="alert" id="alert" role="alert" hidden></div>
+      <div class="talk-head">
+        <h2 class="col-title" id="talk-title">Transcript</h2>
+        <span class="s1" id="s1" hidden></span>
+      </div>
+      <ol class="transcript" id="transcript" aria-live="polite"></ol>
+      <div class="lanes-wrap">
+        <h3 class="sub-title">What the caller is asking for</h3>
+        <ol class="lanes" id="lanes"></ol>
+        <p class="empty small" id="lanes-empty">Matches appear as the caller talks.</p>
+      </div>
+    </section>
+
+    <section class="route" aria-label="Routing decision">
+      <div class="sign" id="sign" data-state="idle">
+        <div class="sign-exit" id="sign-exit" hidden></div>
+        <div class="sign-face">
+          <div class="sign-kicker" id="sign-kicker">Waiting for a call</div>
+          <div class="sign-dept" id="sign-dept">Sievec</div>
+          <div class="sign-service" id="sign-service">Routes you right when time is tight</div>
+        </div>
+        <svg class="sign-arrow" viewBox="0 0 64 64" aria-hidden="true"><path d="M14 10h10v30.9L46.4 18.5l7.1 7.1L31.1 48H62v10H14z"/></svg>
+      </div>
+
+      <div class="handoff" id="handoff" hidden>
+        <div class="handoff-head">
+          <h3 class="sub-title">What the outbound call says</h3>
+          <div class="handoff-actions">
+            <button class="btn ghost" type="button" id="play-brief">Play briefing</button>
+            <button class="btn ghost" type="button" id="copy-brief">Copy</button>
+          </div>
+        </div>
+        <p class="handoff-to" id="handoff-to"></p>
+        <blockquote class="handoff-script" id="handoff-script"></blockquote>
+        <dl class="handoff-facts" id="handoff-facts"></dl>
+      </div>
+
+      <div class="wall-wrap">
+        <div class="wall-head">
+          <span class="count" id="count">0</span>
+          <span class="count-l" id="count-l">departments and numbers</span>
+          <ul class="filters" id="filters"></ul>
+        </div>
+        <div class="wall" id="wall"></div>
+      </div>
+
+      <form class="review" id="review" hidden>
+        <p class="review-q">Was the service right?</p>
+        <div class="review-actions">
+          <button class="btn primary" type="button" id="review-yes">Yes</button>
+          <select id="review-pick" aria-label="Correct service"></select>
+          <button class="btn ghost" type="submit">Save correction</button>
+        </div>
+        <p class="review-done" id="review-done" hidden></p>
+      </form>
+    </section>
+  </main>
+
+  <footer class="ticker" aria-label="Today">
+    <div class="tick"><span class="tick-n" id="s-total">0</span><span class="tick-l">calls</span></div>
+    <div class="tick"><span class="tick-n" id="s-transferred">0</span><span class="tick-l">connected</span></div>
+    <div class="tick"><span class="tick-n" id="s-emerg">0</span><span class="tick-l">sent to 911</span></div>
+    <div class="tick"><span class="tick-n" id="s-cities">0</span><span class="tick-l">cities learned</span></div>
+    <div class="tick"><span class="tick-n" id="s-acc">–</span><span class="tick-l" id="s-acc-l">reviewed accuracy</span></div>
+    <ol class="depts" id="s-services"></ol>
+  </footer>
+
+  <aside class="hood" id="hood" aria-label="Under the hood" hidden>
+    <div class="hood-head">
+      <h2>Under the hood</h2>
+      <button class="btn ghost" id="close-hood" type="button">Close</button>
+    </div>
+    <dl class="hood-config" id="hood-config"></dl>
+    <div class="tabs" role="tablist">
+      <button role="tab" class="tab" id="tab-payloads" aria-selected="true" type="button">Payloads</button>
+      <button role="tab" class="tab" id="tab-audit" aria-selected="false" type="button">Audit trail</button>
+      <label class="check"><input type="checkbox" id="trace-follow" checked> Only this call</label>
+    </div>
+    <section id="pane-payloads" class="pane">
+      <ol class="traces" id="traces"></ol>
+      <p class="empty small" id="traces-empty">Every model and web request shows up here with its full payload.</p>
+    </section>
+    <section id="pane-audit" class="pane" hidden>
+      <p class="chain" id="chain"></p>
+      <ol class="audit" id="audit"></ol>
+      <a class="btn ghost" id="audit-download" download>Download this call's audit trail</a>
+    </section>
+    <div class="hood-tools">
+      <button class="btn ghost" id="reset-learned" type="button">Forget cities learned on calls</button>
+    </div>
+  </aside>
+</body>
+</html>
