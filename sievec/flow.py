@@ -91,20 +91,29 @@ def _spoken_phone(n: str | None) -> str:
 _s1_timers: dict[str, threading.Timer] = {}
 
 
-def schedule_system1(call_id: str, caller_text: str, delay: float = 0.8) -> None:
-    """Debounced fast-model read of what the caller has said so far."""
+def schedule_system1(call_id: str, caller_text: str, delay: float = 0.7,
+                     on_result: Callable[[dict[str, Any]], None] | None = None, latest: str | None = None) -> None:
+    """Debounced System One read of everything the caller has said so far:
+    service probabilities (they drive the lanes) plus emergency / wants a
+    person / urgency / pace, which `on_result` turns into actions."""
     if t := _s1_timers.pop(call_id, None):
         t.cancel()
 
     def run() -> None:
         token = current_call.set(call_id)
-        started = time.time()
         try:
-            cid = rules._llm_category(caller_text, rules.rank(caller_text))
-            bus.system1(call_id, {"id": cid, "label": rules.categories[cid]["label"],
-                                  "latency_ms": int((time.time() - started) * 1000)})
+            r = rules.ask_systemone(caller_text, latest)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("System One read failed: %s", exc)
+            return
         finally:
             current_call.reset(token)
+        snap = bus.get(call_id) or {}
+        if snap.get("status") in ("listening",) and r["lanes"]:
+            bus.lanes(call_id, r["lanes"])
+        bus.system1(call_id, r)
+        if on_result:
+            on_result(r)
 
     t = threading.Timer(delay, run)
     t.daemon = True

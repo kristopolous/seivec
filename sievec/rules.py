@@ -175,9 +175,54 @@ class Rules:
                 return {"id": top["id"], "label": top["label"], "method": "keyword rule", "lanes": lanes}
         cid = self._llm_category(text, lanes)
         return {"id": cid, "label": self.categories[cid]["label"],
-                "method": "System 1 model (keywords unsure)", "lanes": lanes}
+                "method": "System One (keywords unsure)", "lanes": lanes}
+
+    def systemone_questions(self) -> dict[str, Any]:
+        """Everything System One decides about a caller's words, in one call."""
+        return {
+            "service": {"type": "choice", "instructions": "Which city or county service does the caller need?",
+                        "criteria": {cid: f"{c['label']}: {c.get('description', '')}"[:200]
+                                     for cid, c in self.categories.items()}},
+            "emergency": {"type": "noul", "instructions": "Is anyone in danger right now (fire, injury, crime in "
+                                                          "progress, gas leak, downed power line)?"},
+            "wants_human": {"type": "noul", "instructions": "Is the caller asking to talk to a real person instead "
+                                                            "of an automated assistant?"},
+            "urgency": {"type": "score", "instructions": "How urgent is the caller's problem?",
+                        "criteria": ["routine", "soon", "urgent", "life-threatening"]},
+            "pace": {"type": "choice", "instructions": "In the caller's LATEST line only: are they asking the "
+                                                       "assistant itself to talk slower or faster? Ignore requests to "
+                                                       "send help quickly.",
+                     "criteria": {"none": "No request about how fast the assistant talks",
+                                  "slower": "Asked the assistant to slow down its speech",
+                                  "faster": "Asked the assistant to talk faster"}},
+        }
+
+    def ask_systemone(self, text: str, latest: str | None = None) -> dict[str, Any]:
+        """One System One call: service probabilities plus the safety signals."""
+        from .llm import systemone
+        started = time.time()
+        state = f"Caller so far: {text[-1500:]}" + (f"\nCaller's latest line: {latest}" if latest else "")
+        a = systemone(state, self.systemone_questions(), purpose="System One: read the caller")
+        probs = sorted(a["service"]["probabilities"].items(), key=lambda kv: -kv[1])
+        lanes = [{"id": cid, "label": self.categories[cid]["label"], "score": round(p, 3), "raw": round(p * 10, 2),
+                  "emergency": self.categories[cid].get("emergency", False)}
+                 for cid, p in probs[:4] if cid in self.categories and p >= 0.01]
+        return {
+            "id": a["service"]["choice"], "label": self.categories.get(a["service"]["choice"], {}).get("label"),
+            "confidence": round(a["service"]["confidence"], 3), "lanes": lanes,
+            "emergency": round(a["emergency"]["noul"], 3), "wants_human": round(a["wants_human"]["noul"], 3),
+            "urgency": round(a["urgency"]["score"], 2), "pace": a["pace"]["choice"],
+            "pace_p": round(max(a["pace"]["probabilities"].values()), 3),
+            "latency_ms": int((time.time() - started) * 1000), "latest": latest,
+        }
 
     def _llm_category(self, text: str, lanes: list[dict]) -> str:
+        try:
+            s1 = self.ask_systemone(text)
+            if s1["id"] in self.categories:
+                return s1["id"]
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("System One failed, falling back to chat: %s", exc)
         from .llm import complete_json
         options = "\n".join(f"- {c['id']}: {c['label']} ({c['description']})" for c in self.categories.values())
         prompt = (

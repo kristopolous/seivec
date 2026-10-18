@@ -107,7 +107,7 @@ def _speak(call_id: str, role: str, text: str) -> None:
         bus.speech(call_id, "caller", " ".join(words[:i]), uid)
         bus.lanes(call_id, rules.rank(_caller_text(call_id)))
         time.sleep(random.uniform(0.11, 0.24))
-    flow.schedule_system1(call_id, _caller_text(call_id), delay=0.2)
+    flow.schedule_system1(call_id, _caller_text(call_id), delay=0.2, latest=text)
     time.sleep(0.9)
 
 

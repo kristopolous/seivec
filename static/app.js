@@ -304,9 +304,17 @@ function renderLanes(c) {
 
 function renderS1(c) {
   const s = $("s1");
-  if (!c?.system1) { s.hidden = true; return; }
+  const r = c?.system1;
+  if (!r) { s.hidden = true; return; }
   s.hidden = false;
-  s.replaceChildren(`System 1 (${state.config.llm?.system1_model || "fast model"}, ${c.system1.latency_ms} ms) thinks: `, el("b", null, c.system1.label));
+  const pct = (x) => `${Math.round(x * 100)}%`;
+  const bits = [
+    `danger ${pct(r.emergency ?? 0)}`, `wants a person ${pct(r.wants_human ?? 0)}`,
+    `urgency ${(r.urgency ?? 0).toFixed(1)}/3`, r.pace && r.pace !== "none" ? `pace: ${r.pace}` : null,
+  ].filter(Boolean).join(", ");
+  s.replaceChildren(`System One (${state.config.llm?.system1_model || "nimble"}, ${r.latency_ms} ms): `,
+    el("b", null, `${r.label || "?"} ${r.confidence != null ? pct(r.lanes?.[0]?.score ?? r.confidence) : ""}`),
+    `. ${bits}`);
 }
 
 // Past real calls: if our live capture is empty, ask the server to pull
@@ -588,7 +596,7 @@ function renderConfigPanel(st) {
     ["Voice platform", "Guava: speech, turn-taking, multiple-choice fields, transfer"],
     ["Phone line", st.phone ? fmtPhone(st.phone) : "not attached"],
     ["Browser line", st.webrtc_code || "not attached"],
-    ["System 1 model", `${st.llm?.system1_model}: service type, every utterance`],
+    ["System One", `${st.llm?.system1_model} via ${st.llm?.systemone_endpoint}: service, danger, wants a person, urgency, pace on every utterance`],
     ["System 2 model", `${st.llm?.system2_model}: reads city web pages`],
     ["Model endpoint", st.llm?.endpoint],
     ["Web search", st.web_search ? "Parallel search + extract" : "off (no PARALLEL_API_KEY)"],
@@ -604,7 +612,7 @@ function traceNode(t, isNew) {
   const d = el("details");
   const s = el("summary");
   const tier = t.error ? "err" : t.kind === "web" ? "web" : t.system === 2 ? "s2" : "s1";
-  const tierText = t.error ? "Error" : t.kind === "web" ? "Web" : t.system === 2 ? "System 2" : "System 1";
+  const tierText = t.error ? "Error" : t.kind === "web" ? "Web" : t.kind === "systemone" ? "System One" : t.system === 2 ? "System 2" : "System 1";
   s.append(el("span", `tier ${tier}`, tierText), el("span", null, `${t.purpose} (${t.model || t.kind})`), el("span", "ms", `${t.latency_ms} ms`));
   d.append(s, el("div", "pre-label", "Request"), el("pre", null, JSON.stringify(t.request, null, 2)),
     el("div", "pre-label", "Response"), el("pre", null, JSON.stringify(t.response, null, 2)));

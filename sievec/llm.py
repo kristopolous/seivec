@@ -54,7 +54,8 @@ def trace(kind: str, purpose: str, request: Any, response: Any, started: float, 
 
 
 def config() -> dict[str, Any]:
-    return {"endpoint": f"{LLM_URL}/api/chat", "system1_model": MODELS[1], "system2_model": MODELS[2],
+    return {"endpoint": f"{LLM_URL}/api/chat", "systemone_endpoint": f"{LLM_URL}/v1/systemone",
+            "system1_model": MODELS[1], "system2_model": MODELS[2],
             "guava_fallback": bool(os.environ.get("GUAVA_API_KEY"))}
 
 
@@ -106,9 +107,28 @@ def complete_json(prompt: str, schema: dict, *, system: int = 2, purpose: str = 
 
 
 def warm() -> None:
-    """Load the fast model so the first live call isn't the slow one."""
+    """Load the System One model so the first live call isn't the slow one."""
     try:
-        complete_json("Say ok.", {"type": "object", "properties": {"ok": {"type": "boolean"}}},
-                      system=1, purpose="warm-up")
+        systemone("Caller: hello", {"ok": {"type": "noul", "instructions": "Is the caller greeting?"}},
+                  purpose="warm-up")
     except Exception:  # noqa: BLE001
         pass
+
+
+def systemone(state: str, questions: dict[str, Any], purpose: str = "System One") -> dict[str, Any]:
+    """Ollama System One (POST /v1/systemone): typed questions (choice / noul /
+    score) about one piece of text, answered with probabilities in one call.
+    https://docs.ollama.com/api/systemone"""
+    body = {"model": MODELS[1], "state": state, "questions": questions, "keep_alive": "30m"}
+    url = f"{LLM_URL}/v1/systemone"
+    started = time.time()
+    try:
+        r = httpx.post(url, json=body, timeout=15.0)
+        r.raise_for_status()
+        out = r.json()
+    except Exception as exc:  # noqa: BLE001
+        trace("systemone", purpose, {"url": url, **body}, {"error": str(exc)}, started,
+              system=1, model=MODELS[1], error=True)
+        raise
+    trace("systemone", purpose, {"url": url, **body}, out, started, system=1, model=MODELS[1])
+    return out["answers"]

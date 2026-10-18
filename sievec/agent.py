@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 
 import guava
 from guava.events import AgentSpeechEvent, BotSessionEnded, CallerSpeechEvent, EscalateEvent
@@ -125,6 +126,7 @@ def adjust_speed(call: guava.Call, event: CallerSpeechEvent) -> None:
     if not step or call.get_variable("speed_uid") == event.utterance_id:
         return  # partial transcripts repeat the same utterance; act once
     call.set_variable("speed_uid", event.utterance_id)
+    call.set_variable("pace_rule_at", time.time())
     current = call.get_variable("speech_speed") or "medium"
     new = SPEEDS[max(0, min(len(SPEEDS) - 1, SPEEDS.index(current) + step))]
     if new == current:
@@ -174,6 +176,38 @@ def escalate_to_311(call: guava.Call, why: str) -> None:
         call.hangup(line + " Then end the call politely.")
 
 
+def act_on_systemone(call: guava.Call, r: dict) -> None:
+    """System One's read of the caller, turned into actions. The phrase rules
+    already fired instantly on the words; this catches what they miss."""
+    if call.get_variable("escalated"):
+        return
+    if r["emergency"] >= 0.85:
+        set_urgent(call, f"System One: danger {r['emergency']:.2f}")
+        mark_emergency(call, f"System One: danger probability {r['emergency']:.2f}", warn=True)
+        return
+    if r["wants_human"] >= 0.9:
+        escalate_to_311(call, f"System One: wants a person {r['wants_human']:.2f}")
+        return
+    if r["urgency"] >= 2.0:
+        set_urgent(call, f"System One: urgency {r['urgency']:.1f} of 3")
+    latest = r.get("latest") or ""
+    if (r["pace"] in ("slower", "faster") and r["pace_p"] >= 0.8
+            and call.get_variable("pace_line") != latest
+            and time.time() - (call.get_variable("pace_rule_at") or 0) > 6):  # the phrase rule just did it
+        call.set_variable("pace_line", latest)
+        step = -1 if r["pace"] == "slower" else 1
+        current = call.get_variable("speech_speed") or "medium"
+        new = SPEEDS[max(0, min(len(SPEEDS) - 1, SPEEDS.index(current) + step))]
+        if new != current:
+            call.set_variable("speech_speed", new)
+            call.set_variable("speed_by_caller", True)
+            call.set_persona(speech_speed=new)
+            bus.note(call.id, "voice.speed", {"from": current, "to": new, "by": "System One", "p": r["pace_p"]})
+            bus.annotate(call.id, f"Voice speed {current} → {new}: System One heard \"{latest.strip()}\" "
+                                  f"as a request to talk {r['pace']} ({r['pace_p']:.0%}).", "speed")
+            bus._update(call.id, "call", speech_speed=new)
+
+
 @agent.on_escalate
 def on_escalate(call: guava.Call, event: EscalateEvent) -> None:
     escalate_to_311(call, "Guava escalation: requested by the caller" if event.requested_by == "human"
@@ -204,7 +238,8 @@ def on_caller_speech(call: guava.Call, event: CallerSpeechEvent) -> None:
     text = caller_text(call.id)
     lanes = rules.rank(text)
     bus.lanes(call.id, lanes)
-    flow.schedule_system1(call.id, text)
+    flow.schedule_system1(call.id, text, latest=event.utterance,
+                          on_result=lambda r: act_on_systemone(call, r))
     adjust_speed(call, event)
     if (h := WANTS_HUMAN.search(event.utterance)) and not emergency_in(event.utterance):
         escalate_to_311(call, f'caller said "{h.group(0)}"')
