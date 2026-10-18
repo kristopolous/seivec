@@ -173,6 +173,59 @@ def learn_city(key: str, city: str, focus: str | None, progress: Progress) -> di
         return filled
 
 
+def learn_service(key: str, city: str, category: str, progress: Progress) -> dict | None:
+    """A targeted search for one service in a city whose column lacks it,
+    e.g. Culver City bulky item pickup. Runs during the call."""
+    cat = rules.categories[category]
+    label = cat["label"].lower()
+    emit = lambda state, **kw: progress({"key": key, "city": city, "category": category,  # noqa: E731
+                                        "label": cat["label"], "state": state, **kw})
+    emit("searching")
+    results = websearch.search(
+        f"Official City of {city}, California phone number for {label} ({cat['description']}).",
+        [f"City of {city} CA {label} phone number", f"{city} CA {cat['keywords'][0]}"],
+        max_results=5, purpose=f"learn {city}: {cat['label']}",
+    )
+    urls = _official_first(results, city)[:3]
+    emit("reading", sources=urls)
+    snips = _snippets(websearch.extract(urls, f"Phone number for {label} in City of {city}",
+                                        purpose=f"learn {city}: read {cat['label']} pages"))
+    if not snips:
+        emit("failed", reason="no phone numbers on the pages")
+        return None
+    listing = "\n".join(f"[{i}] {s['phone_display']}: {s['label']}" for i, s in enumerate(snips))
+    schema = {"type": "object", "properties": {
+        "snippet": {"type": "integer", "description": "Index of the right number, or -1 if none clearly fits"},
+        "department": {"type": "string", "description": "Office name, from the snippet"},
+        "note": {"type": "string"}}}
+    try:
+        out, _ = complete_json(
+            f"Phone numbers from official City of {city} pages, each with its label:\n{listing}\n\n"
+            f"Which one should a resident call for: {cat['label']} ({cat['description']})? Answer -1 unless the "
+            f"number's own label clearly fits. Don't pick a general city hall line.",
+            schema, system=2, purpose=f"learn {city}: pick {cat['label']} number",
+        )
+    except Exception as exc:  # noqa: BLE001
+        emit("failed", reason=str(exc))
+        return None
+    idx = out.get("snippet")
+    if not isinstance(idx, int) or not 0 <= idx < len(snips):
+        emit("failed", reason="no clear match on the pages")
+        return None
+    s = snips[idx]
+    cell = {
+        "id": f"{key}:{category}", "jurisdiction": key,
+        "department": (out.get("department") or f"City of {city}").strip()[:80],
+        "service": cat["label"], "phone": s["phone"], "phone_display": s["phone_display"],
+        "hours": "", "notes": (out.get("note") or "")[:160],
+        "description": f"Learned from {urlparse(s['url']).netloc}.",
+        "source_url": s["url"], "source_text": s["context"], "verified": False, "learned": True,
+    }
+    rules.save_learned_cells(key, f"City of {city}", {category: cell})
+    emit("done", cell=cell)
+    return cell
+
+
 def learn_in_background(key: str, city: str, progress: Progress, call_id: str | None = None) -> None:
     def job() -> None:
         token = current_call.set(call_id)

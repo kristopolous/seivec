@@ -8,7 +8,7 @@ import guava
 from guava.events import AgentSpeechEvent, BotSessionEnded, CallerSpeechEvent
 from guava.types.call_info import PSTNCallInfo, WebRTCCallInfo
 
-from . import flow, places
+from . import flow, history, places
 from .bus import bus
 from .rules import rules
 
@@ -138,6 +138,7 @@ def on_session_end(call: guava.Call, event: BotSessionEnded) -> None:
         bus.step(call.id, "connect", "done", cell.get("phone_display"), "Handoff briefing ready")
         bus.status(call.id, "handoff")
     bus.ended(call.id, event.termination_reason)
+    history.fetch_after_call(call.id)
 
 
 def run(phone: str | None, webrtc_code: str | None) -> None:

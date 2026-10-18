@@ -60,6 +60,7 @@ function handle(msg) {
       const c = state.calls.get(msg.call_id);
       if (!c) return;
       c.transcript = msg.transcript;
+      if (msg.transcript[0]?.source === "guava") c.transcript_source = "guava";
       if (msg.call_id === state.selected) renderTranscript();
       break;
     }
@@ -128,7 +129,7 @@ function renderCalls() {
     const cat = c.decision?.category?.label;
     const what = el("span", "what", [cat, STATUS_WORDS[c.status]].filter(Boolean).join(", ") + (c.simulated ? " (sample)" : ""));
     li.append(dot, who, when, what);
-    const pick = () => { state.selected = c.id; state.follow = isLive(c); loadAudit(); renderAll(); };
+    const pick = () => { state.selected = c.id; state.follow = isLive(c); loadAudit(); renderAll(); backfillTranscript(c); };
     li.onclick = pick;
     li.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } };
     return li;
@@ -205,11 +206,41 @@ function renderS1(c) {
   s.replaceChildren(`System 1 (${state.config.llm?.system1_model || "fast model"}, ${c.system1.latency_ms} ms) thinks: `, el("b", null, c.system1.label));
 }
 
+// Past real calls: if our live capture is empty, ask the server to pull
+// Guava's own transcript for it.
+const backfilled = new Set();
+async function backfillTranscript(c) {
+  if (!c || c.simulated || isLive(c) || backfilled.has(c.id)) return;
+  backfilled.add(c.id);
+  await fetch(`/api/calls/${c.id}/transcript/refresh`, { method: "POST" });
+}
+
+function renderPlayback(c) {
+  const box = $("playback");
+  const show = c && !c.simulated && !isLive(c);
+  box.hidden = !show;
+  if (!show) return;
+  const audio = $("recording");
+  const src = `/api/calls/${c.id}/recording`;
+  if (audio.getAttribute("src") !== src) audio.setAttribute("src", src);
+  const dur = c.ended_at ? Math.round(c.ended_at - c.started_at) : null;
+  $("playback-note").textContent = [
+    "Recording from Guava",
+    dur != null ? `${dur} s call` : null,
+    c.transcript_source === "guava" ? "transcript from Guava" : null,
+  ].filter(Boolean).join(", ");
+}
+
 function renderTranscript() {
   const c = current();
+  renderPlayback(c);
   const list = $("transcript");
   const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
   const lines = c?.transcript || [];
+  if (c && !lines.length && !isLive(c)) {
+    list.replaceChildren(el("li", "none", "Nothing was said on this call. The caller hung up before speaking."));
+    return;
+  }
   list.replaceChildren(...lines.map((l) => {
     const li = el("li", `line ${l.role}${l.partial ? " partial" : ""}`);
     li.append(el("span", "who", l.role === "caller" ? "Caller" : "Rosa"), el("span", "text", l.text));

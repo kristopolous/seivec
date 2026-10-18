@@ -10,11 +10,11 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import llm
+from . import history, llm
 from .audit import audit
 from .bus import bus
 from .rules import LEARNED_DIR, rules
@@ -82,6 +82,23 @@ def create_app() -> FastAPI:
         bus.broadcast({"type": "rules", "rules": rules.public_table()})
         bus.broadcast({"type": "stats", "stats": stats()})
         return {"ok": True}
+
+    @app.post("/api/calls/{call_id}/transcript/refresh")
+    async def refresh_transcript(call_id: str):
+        """Pull Guava's own transcript for a past call whose live capture is empty."""
+        changed = await asyncio.to_thread(history.fill_from_guava, call_id)
+        call = bus.get(call_id)
+        return {"changed": changed, "lines": len((call or {}).get("transcript") or [])}
+
+    @app.get("/api/calls/{call_id}/recording")
+    async def call_recording(call_id: str):
+        call = bus.get(call_id)
+        if not call or call.get("simulated"):
+            raise HTTPException(404, "No recording for this call")
+        r = await asyncio.to_thread(history.recording, call_id)
+        if r.status_code != 200:
+            raise HTTPException(r.status_code, "Guava has no recording for this call yet")
+        return Response(r.content, media_type="audio/wav")
 
     @app.get("/api/calls/{call_id}/audit")
     async def call_audit(call_id: str):

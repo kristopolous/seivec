@@ -180,16 +180,31 @@ def _decide(call_id, service_value, location, transcript, guess, say) -> Outcome
         rules.ensure_jurisdiction(key, place["name"])
         bus.broadcast({"type": "rules", "rules": rules.public_table()})
         filled = learn.learn_city(key, city, cat["id"], learn_progress)
-        cell = filled.get(cat["id"]) or filled.get("general")
+        cell = filled.get(cat["id"])
         bus.broadcast({"type": "rules", "rules": rules.public_table()})
     if cell is None and place["kind"] == "other_city":
-        cell = rules.lookup("general", key)
+        # The city's directory didn't list this service: search for it specifically.
+        city = place["name"].replace("City of ", "")
+        bus.step(call_id, "rule", "active", f"{category['label']} × {place['name']}",
+                 f"No {category['label'].lower()} line on file for {city}. Searching for it.")
+        say(f"Tell the caller you're finding the right {city} office for that. Just a moment.")
+        cell = learn.learn_service(key, city, cat["id"], learn_progress)
+        bus.broadcast({"type": "rules", "rules": rules.public_table()})
+    fallback = False
+    if cell is None and place["kind"] == "other_city":
+        cell, fallback = rules.lookup("general", key), True
     if cell is None:
-        cell = rules.lookup("general", "la_city" if place["kind"] == "la_city" else "la_county")
+        cell, fallback = rules.lookup("general", "la_city" if place["kind"] == "la_city" else "la_county"), True
+    if fallback:
+        cell = {**cell, "notes": f"No direct {category['label'].lower()} line found; this is the general line. "
+                                 + (cell.get("notes") or "")}
 
     decision["cell"] = cell
+    decision["fallback"] = fallback
     decision["rule"] = f"{category['label']} × {rules.jurisdictions.get(key, {}).get('short', place['name'])}"
-    bus.step(call_id, "rule", "done", cell["department"], decision["rule"], data={"category": cat["id"], "column": key})
+    bus.step(call_id, "rule", "done", cell["department"],
+             decision["rule"] + (" (general line, no direct number found)" if fallback else ""),
+             data={"category": cat["id"], "column": key, "fallback": fallback})
 
     # 4. Connect
     brief = briefing(call_id, decision, location)

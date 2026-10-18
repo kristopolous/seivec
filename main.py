@@ -82,12 +82,14 @@ def main() -> None:
         "llm": llm.config(),
         "categories": len(rules.categories),
     }
+    from sievec import history
+    restored = history.load_past_calls()
     serve_dashboard()
     if args.warm:
         from sievec import learn
         learn.warm_cities([c.strip() for c in args.warm.split(",") if c.strip()], flow.learn_progress)
-    log.info("Sievec dashboard on http://localhost:%d  phone=%s  webrtc=%s  transfer=%s",
-             PORT, phone or "-", webrtc_code or "-", flow.TRANSFER_MODE)
+    log.info("Sievec dashboard on http://localhost:%d  phone=%s  webrtc=%s  transfer=%s  restored=%d calls",
+             PORT, phone or "-", webrtc_code or "-", flow.TRANSFER_MODE, restored)
 
     if args.sim_only:
         try:
