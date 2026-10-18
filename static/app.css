@@ -107,11 +107,6 @@ select { border: 1px solid var(--rule); background: var(--panel); border-radius:
 .badge.alarm { background: var(--red); color: #fff; }
 .badge.muted { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--muted); }
 .tag { font-size: 11px; color: var(--muted); border: 1px solid var(--rule); border-radius: 4px; padding: 0 5px; margin-left: 6px; font-weight: 400; }
-.viewing {
-  display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px;
-  border-radius: 6px; background: color-mix(in srgb, var(--city) 14%, var(--panel)); font-size: 14px;
-}
-.viewing[hidden] { display: none; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--amber); }
 .dot[data-s="transferred"], .dot[data-s="handoff"] { background: var(--sign); }
 .dot[data-s="emergency"] { background: var(--red); }
@@ -120,7 +115,7 @@ select { border: 1px solid var(--rule); background: var(--panel); border-radius:
 @keyframes pulse { 50% { opacity: .35; } }
 
 /* talk column */
-.talk { display: grid; grid-template-rows: auto auto auto auto auto 1fr auto; gap: 12px; overflow: hidden; }
+.talk { display: grid; grid-template-rows: auto auto auto auto 1fr auto; gap: 12px; overflow: hidden; }
 .talk-head { display: flex; align-items: center; gap: 12px; }
 .s1 { font-size: 13px; color: var(--muted); }
 .s1 b { color: var(--ink); font-weight: 600; }

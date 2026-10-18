@@ -175,29 +175,12 @@ function renderCalls() {
     nodes.push(row);
   }
   list.replaceChildren(...nodes);
-  renderViewing();
 }
 
-function renderViewing() {
-  const c = current();
-  const banner = $("viewing");
-  const liveCall = orderedCalls().find(isLive);
-  banner.hidden = !c || isLive(c);
-  if (banner.hidden) return;
-  $("viewing-text").textContent = `Viewing a past call from ${fmtTime(c.started_at)}` + (liveCall ? ". A call is live now." : "");
-  $("back-live").hidden = !liveCall && state.follow;
-  $("back-live").textContent = liveCall ? "Go to live call" : "Follow live calls";
-}
-$("back-live").onclick = () => {
-  const liveCall = orderedCalls().find(isLive);
-  if (liveCall) selectCall(liveCall, { follow: true });
-  else { state.follow = true; $("follow-live").checked = true; renderViewing(); }
-};
 $("follow-live").onchange = (e) => {
   state.follow = e.target.checked;
   const liveCall = orderedCalls().find(isLive);
   if (state.follow && liveCall) selectCall(liveCall, { follow: true });
-  renderViewing();
 };
 $("call-list").addEventListener("keydown", (e) => {
   if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
