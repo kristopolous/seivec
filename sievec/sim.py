@@ -238,13 +238,25 @@ LOCATIONS = {
 }
 
 
-def build_scenario(incident: str, location: str) -> dict:
+STYLES = {
+    "normal": "Caller: normal",
+    "slow": "Caller asks Rosa to slow down",
+    "hurry": "Caller is in a hurry",
+}
+
+
+def build_scenario(incident: str, location: str, style: str = "normal") -> dict:
     label, number, where, loc = LOCATIONS[location]
-    return {
-        "title": f"{incident} in {label}", "caller": number, "service": "", "location": loc,
-        "script": [("agent", GREETING), ("caller", INCIDENTS[incident]),
-                   ("agent", "I can help with that. Where is this?"), ("caller", where)],
-    }
+    said = INCIDENTS[incident]
+    script = [("agent", GREETING)]
+    if style == "slow":
+        script += [("caller", "I'm sorry, you're talking way too fast for me, can you slow down?"),
+                   ("agent", "Of course. I'll slow down. What can I help you with?")]
+    if style == "hurry":
+        said += ", please hurry, I need this taken care of right now"
+    script += [("caller", said), ("agent", "I can help with that. Where is this?"), ("caller", where)]
+    return {"title": f"{incident} in {label} ({style})", "caller": number, "service": "", "location": loc,
+            "script": script}
 
 
 # The demo reel: a spread of calls back to back.

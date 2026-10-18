@@ -759,6 +759,7 @@ async function loadScenarios() {
   const o = await (await fetch("/api/demo-options")).json();
   $("sim-incident").replaceChildren(...o.incidents.map((i) => new Option(i.label, i.id)));
   $("sim-location").replaceChildren(...o.locations.map((l) => new Option(l.label, l.id)));
+  $("sim-style").replaceChildren(...o.styles.map((st) => new Option(st.label, st.id)));
 }
 let reelOn = false;
 $("reel").onclick = async () => {
@@ -771,7 +772,7 @@ $("reel").onclick = async () => {
 $("sim-run").onclick = async () => {
   state.follow = true;
   $("follow-live").checked = true;
-  await fetch(`/api/simulate?incident=${$("sim-incident").value}&location=${$("sim-location").value}`, { method: "POST" });
+  await fetch(`/api/simulate?incident=${$("sim-incident").value}&location=${$("sim-location").value}&style=${$("sim-style").value}`, { method: "POST" });
 };
 
 // ---------- browser calling (Guava WebRTC) ----------
