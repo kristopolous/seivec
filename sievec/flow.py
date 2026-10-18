@@ -11,12 +11,13 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import threading
 import time
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from . import learn, places
+from . import learn, pii, places
 from .bus import bus
 from .llm import current_call
 from .rules import rules
@@ -61,7 +62,11 @@ def briefing(call_id: str, decision: dict[str, Any], location: str) -> dict[str,
     snap = bus.get(call_id) or {}
     cell, cat, place = decision["cell"], decision["category"], decision["place"]
     caller_lines = [l["text"] for l in snap.get("transcript", []) if l["role"] == "caller"]
-    words = max(caller_lines, key=len) if caller_lines else ""
+    # Quote the caller without the clauses that held an identifier.
+    clean = [", ".join(p.strip() for p in re.split(r"[,;.]", l) if p.strip() and not pii.kinds_in(p))
+             for l in caller_lines]
+    words = max(clean, key=len) if clean else ""
+    withheld = snap.get("pii") or []
     callback = snap.get("caller")
     ref = call_id[-6:].upper()
     where = location if location and location.lower() not in ("yes", "yeah") else place["name"]
@@ -70,13 +75,16 @@ def briefing(call_id: str, decision: dict[str, Any], location: str) -> dict[str,
         f"I have a resident on the line who needs {cat['label'].lower()}, at {where}, {place['name']}. "
         + (f"In their words: \"{words}\". " if words else "")
         + (f"Their callback number is {_spoken_phone(callback)}. " if callback else "")
+        + ("They offered personal details on our line. We don't record or pass those on, so please verify "
+           "their identity directly. " if withheld else "")
         + f"Our reference is {' '.join(ref)}. I'm connecting them to you now."
     )
     return {
         "to": {"department": cell["department"], "service": cell["service"], "phone": cell.get("phone"),
                "phone_display": cell.get("phone_display"), "source_url": cell.get("source_url")},
         "facts": {"service": cat["label"], "location": where, "jurisdiction": place["name"],
-                  "callback": callback, "reference": ref, "rule": decision["rule"]},
+                  "callback": callback, "reference": ref, "rule": decision["rule"],
+                  "identifiers_withheld": [pii.LABELS[k] for k in withheld]},
         "script": script,
     }
 
@@ -98,6 +106,8 @@ def schedule_system1(call_id: str, caller_text: str, delay: float = 0.7,
     person / urgency / pace, which `on_result` turns into actions."""
     if t := _s1_timers.pop(call_id, None):
         t.cancel()
+
+    caller_text, latest = pii.scrub(caller_text), latest and pii.scrub(latest)
 
     def run() -> None:
         token = current_call.set(call_id)
@@ -133,6 +143,7 @@ def decide(call_id: str, service_value: str, location: str, transcript: str, gue
 
 
 def _decide(call_id, service_value, location, transcript, guess, say) -> Outcome:
+    transcript, location = pii.scrub(transcript), pii.scrub(location)
     snap = bus.get(call_id) or {}
     caller_text = " ".join(l["text"] for l in snap.get("transcript", []) if l["role"] == "caller")
     bus.status(call_id, "routing", fields={"service": service_value, "location": location})
@@ -283,6 +294,7 @@ def answer_question(call_id: str, question: str) -> str:
     """on_question: same move as routing. Work out a search, read the pages,
     answer from them, and keep the office + number as a rule."""
     token = current_call.set(call_id)
+    question = pii.scrub(question)
     try:
         snap = bus.get(call_id) or {}
         decision = snap.get("decision") or {}

@@ -16,6 +16,7 @@ from typing import Any
 
 import httpx
 
+from . import pii
 from .bus import CALL_LOG, MAX_CALLS, bus
 
 logger = logging.getLogger("sievec.history")
@@ -75,7 +76,7 @@ def guava_transcript(call_id: str) -> list[dict[str, Any]] | None:
     except Exception as exc:  # noqa: BLE001
         logger.warning("Guava transcript for %s failed: %s", call_id, exc)
         return None
-    return [{"role": "caller" if t.get("speaker") == "HUMAN" else "agent", "uid": None, "text": t.get("text", ""),
+    return [{"role": "caller" if t.get("speaker") == "HUMAN" else "agent", "uid": None, "text": pii.scrub(t.get("text", "")),
              "t": (t.get("offset_ms") or 0) / 1000, "partial": False, "interrupted": False, "source": "guava"}
             for t in turns if t.get("text")]
 

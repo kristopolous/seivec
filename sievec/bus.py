@@ -14,6 +14,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from . import pii
 from .audit import audit, summarize_trace
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -66,7 +67,7 @@ class Bus:
         self._loop.call_soon_threadsafe(fan_out)
 
     def _audit(self, call_id: str | None, event: str, payload: dict[str, Any]) -> None:
-        rec = audit.record(call_id, event, payload)
+        rec = audit.record(call_id, event, pii.scrub_all(payload))
         self._emit({"type": "audit", "record": rec})
 
     def note(self, call_id: str, event: str, payload: dict[str, Any]) -> None:
@@ -75,6 +76,7 @@ class Bus:
 
     def annotate(self, call_id: str, text: str, kind: str = "info") -> None:
         """A note in the transcript, at the moment Sievec did something."""
+        text = pii.scrub(text)
         with self._lock:
             call = self.calls.get(call_id)
             if call is None:
@@ -128,7 +130,11 @@ class Bus:
 
     def speech(self, call_id: str, role: str, text: str, utterance_id: str | None = None,
                interrupted: bool = False) -> None:
-        """Append or revise a transcript line. Caller partials share an utterance_id."""
+        """Append or revise a transcript line. Caller partials share an utterance_id.
+
+        Identifiers are redacted here, before the line is stored or sent anywhere."""
+        text, found = pii.redact(text)
+        new_kinds: list[str] = []
         with self._lock:
             call = self.calls.get(call_id)
             if call is None:
@@ -150,12 +156,25 @@ class Bus:
                     "partial": role == "caller",
                     "interrupted": interrupted,
                 })
+            if found:
+                seen = call.setdefault("pii", [])
+                new_kinds = [k for k in found if k not in seen]
+                seen.extend(new_kinds)
             if role == "agent":
                 for line in lines:
                     if line["role"] == "caller":
                         line["partial"] = False
             transcript = json.loads(json.dumps(lines))
         self._emit({"type": "transcript", "call_id": call_id, "transcript": transcript})
+        if new_kinds:
+            self.privacy(call_id, new_kinds, role)
+
+    def privacy(self, call_id: str, kinds: list[str], source: str) -> None:
+        names = ", ".join(pii.LABELS[k] for k in kinds)
+        self._audit(call_id, "pii.redacted", {"kinds": kinds, "source": source, "stored": "placeholder only"})
+        self.annotate(call_id, f"Redacted {names} before storage. Not kept in the transcript, call log, audit "
+                               f"trail, model prompts or the handoff.", "privacy")
+        self._update(call_id, "call")
 
     def lanes(self, call_id: str, lanes: list[dict[str, Any]]) -> None:
         self._update(call_id, "lanes", lanes=lanes)
@@ -178,6 +197,7 @@ class Bus:
         self._update(call_id, "system1", system1=result)
 
     def trace(self, rec: dict[str, Any]) -> None:
+        rec = pii.scrub_all(rec)
         with self._lock:
             self.traces.append(rec)
             del self.traces[:-MAX_TRACES]

@@ -206,6 +206,7 @@ function renderCalls() {
     row.dataset.id = c.id;
     const who = el("span", "log-who", c.caller ? fmtPhone(c.caller) : c.channel === "browser" ? "Browser caller" : "Caller");
     if (c.simulated) who.append(el("span", "tag", "sample"));
+    if (c.pii?.length) who.append(el("span", "tag privacy", "PII redacted"));
     const [label, kind] = c.decision?.escalated && ["handoff", "transferred", "transferring"].includes(c.status)
       ? ["To 311", "ok"] : (BADGES[c.status] || ["Ended", "muted"]);
     row.append(
@@ -373,10 +374,21 @@ function renderTranscript() {
   }
   list.replaceChildren(...lines.map((l) => {
     const li = el("li", `line ${l.role}${l.partial ? " partial" : ""}${l.kind ? " k-" + l.kind : ""}`);
-    li.append(el("span", "who", l.role === "caller" ? "Caller" : l.role === "system" ? "Sievec" : "Rosa"), el("span", "text", l.text));
+    li.append(el("span", "who", l.role === "caller" ? "Caller" : l.role === "system" ? "Sievec" : "Rosa"), redactedText(l.text));
     return li;
   }));
   if (atBottom || lines.length < 4) list.scrollTop = list.scrollHeight;
+}
+
+// [SSN], [CARD], ... are placeholders the server put in place of the real value.
+const REDACTED = { SSN: "SSN redacted", CARD: "card redacted", DOB: "birthday redacted", EMAIL: "email redacted" };
+function redactedText(text) {
+  const span = el("span", "text");
+  for (const part of text.split(/(\[(?:SSN|CARD|DOB|EMAIL)\])/)) {
+    const m = part.match(/^\[(\w+)\]$/);
+    span.append(m ? el("span", "redacted", REDACTED[m[1]]) : document.createTextNode(part));
+  }
+  return span;
 }
 
 function renderPipeline() {

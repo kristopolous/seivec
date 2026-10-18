@@ -364,3 +364,8 @@ select { border: 1px solid var(--rule); background: var(--panel); border-radius:
 
 .linkbtn { border: 0; background: none; padding: 0; color: var(--city); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .linkbtn[hidden] { display: none; }
+.line.system.k-privacy { border-left-color: var(--city); background: color-mix(in srgb, var(--city) 10%, transparent); }
+.line.system.k-privacy .who { color: var(--city); }
+.redacted { font-family: inherit; font-weight: 700; font-size: .85em; padding: 0 5px; border-radius: 3px;
+  background: var(--ink); color: var(--bg, #fff); letter-spacing: .02em; }
+.tag.privacy { background: color-mix(in srgb, var(--city) 18%, transparent); color: var(--ink); }

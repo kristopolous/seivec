@@ -10,7 +10,7 @@ import guava
 from guava.events import AgentSpeechEvent, BotSessionEnded, CallerSpeechEvent, EscalateEvent
 from guava.types.call_info import PSTNCallInfo, WebRTCCallInfo
 
-from . import flow, history, places
+from . import flow, history, pii, places
 from .bus import bus
 from .rules import emergency_in, rules
 
@@ -69,7 +69,9 @@ def on_call_start(call: guava.Call) -> None:
             "is injured; if so, tell them to hang up and dial nine-one-one now. Never promise when a crew will arrive. "
             "Always say \"Los Angeles\" in full, never \"L.A.\" "
             "Never tell a caller you can't help because of where they are: if the problem is in another city "
-            "(even outside California), just record that city; the system looks up the right office there."
+            "(even outside California), just record that city; the system looks up the right office there. "
+            "Never ask for, repeat or read back a Social Security number, card number, date of birth or account "
+            "number. If the caller offers one, say you don't need it and to please not share it on this line."
         ),
         checklist=[
             guava.Field(
@@ -255,6 +257,11 @@ def mark_emergency(call: guava.Call, why: str, warn: bool) -> None:
 @agent.on_caller_speech
 def on_caller_speech(call: guava.Call, event: CallerSpeechEvent) -> None:
     bus.speech(call.id, "caller", event.utterance, event.utterance_id)
+    if pii.redact(event.utterance)[1] and not call.get_variable("pii_warned"):
+        call.set_variable("pii_warned", True)
+        call.send_instruction("The caller just shared sensitive personal information. Briefly tell them you don't "
+                              "need it and to please not share card or Social Security numbers on this line, "
+                              "then carry on helping. Do not repeat what they said.")
     text = caller_text(call.id)
     # The bars come from System One's probabilities (set when its read returns).
     flow.schedule_system1(call.id, text, latest=event.utterance,

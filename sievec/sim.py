@@ -44,6 +44,21 @@ SCENARIOS = {
             ("caller", "Ventura and Van Nuys, Sherman Oaks"),
         ],
     },
+    "pii_rent": {
+        "title": "Caller overshares SSN, birthday and card (privacy)",
+        "caller": "+18185550163",
+        "service": "",
+        "location": "Van Nuys",
+        "script": [
+            ("agent", GREETING),
+            ("caller", "Hi, I can't pay my rent this month and I need help. My name is Maria Lopez, my Social "
+                       "Security number is 555-12-3456, my date of birth is March 4th, 1980, and my card number "
+                       "is 4111 1111 1111 1111 if you need it for anything"),
+            ("agent", "Thank you, Maria. I don't need any of those numbers, so please don't share card or Social "
+                      "Security numbers on this line. Is this in the City of Los Angeles?"),
+            ("caller", "Yes, Van Nuys"),
+        ],
+    },
     "possum": {
         "title": "Dead possum, area code confirmed",
         "caller": "+13235550142",
@@ -242,6 +257,7 @@ STYLES = {
     "normal": "Caller: normal",
     "slow": "Caller asks Rosa to slow down",
     "hurry": "Caller is in a hurry",
+    "overshare": "Caller overshares SSN, birthday, card",
 }
 
 
@@ -254,7 +270,14 @@ def build_scenario(incident: str, location: str, style: str = "normal") -> dict:
                    ("agent", "Of course. I'll slow down. What can I help you with?")]
     if style == "hurry":
         said += ", please hurry, I need this taken care of right now"
-    script += [("caller", said), ("agent", "I can help with that. Where is this?"), ("caller", where)]
+    if style == "overshare":
+        script += [("caller", f"{said}. My name is Maria Lopez, my Social Security number is 555-12-3456, my "
+                              f"date of birth is March 4th, 1980, and my card number is 4111 1111 1111 1111 if "
+                              f"you need it"),
+                   ("agent", "Thanks, Maria. I don't need any of those numbers, so please don't share card or "
+                             "Social Security numbers on this line. Where is this?"), ("caller", where)]
+    else:
+        script += [("caller", said), ("agent", "I can help with that. Where is this?"), ("caller", where)]
     return {"title": f"{incident} in {label} ({style})", "caller": number, "service": "", "location": loc,
             "script": script}
 
@@ -262,7 +285,7 @@ def build_scenario(incident: str, location: str, style: str = "normal") -> dict:
 # The demo reel: a spread of calls back to back.
 # A breadth tour: different services, jurisdictions, and behaviors (voice
 # speed, urgency, emergency, live web search, a brand-new service).
-REEL = ["slow_down", "la_graffiti", "lb_tree", "la_roaches", "county_coyote", "glendora_pothole", "pas_car",
+REEL = ["slow_down", "pii_rent", "la_graffiti", "lb_tree", "la_roaches", "county_coyote", "glendora_pothole", "pas_car",
         "hurry_up", "la_ticket", "ing_breakin", "compton_couch", "la_rent", "weho_build", "gas",
         "la_food", "sd_library", "lb_barking", "downey_dumping"]
 

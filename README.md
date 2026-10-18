@@ -60,6 +60,33 @@ Each of these shows as a note in the transcript at the moment it happened.
 
 Every step (area-code guess, place resolution and its sources, service choice and method, rule hit, handoff briefing, model and web requests, operator reviews) is appended to `data/audit.jsonl`. Each record carries the SHA-256 of the record before it, so any edit breaks the chain. `GET /api/audit/verify` checks it, and `GET /api/calls/{id}/audit` exports one call.
 
+## Privacy (PII) and compliance
+
+Callers overshare. Someone asking for rent help will read out their Social Security number, birthday and card
+number "in case you need it". Sievec doesn't need any of it to route a call, so it never keeps it.
+
+- **Redacted at capture** (`sievec/pii.py`): every transcript line passes through `pii.redact` the moment it
+  arrives, live and partial. SSNs, card numbers (Luhn-checked), dates of birth and emails become `[SSN]`,
+  `[CARD]`, `[DOB]`, `[EMAIL]`, including spoken digits ("five five five...") and half-finished numbers.
+  The dashboard shows a "redacted" pill and a note for each kind.
+- **Nothing downstream sees the value**: transcript, `calls.jsonl`, the audit chain, System One / System 2
+  prompts, web searches, traces in Under the hood, and the Guava transcript backfill all get the placeholder.
+  Values are not hashed either (a hash of a 9-digit SSN is reversible by brute force).
+- **Minimal handoff**: the briefing quotes the caller without the clauses that held an identifier and tells
+  the department to verify identity directly (`facts.identifiers_withheld`).
+- **Rosa won't collect it**: the persona never asks for or reads back these numbers; on a live call, the first
+  overshare triggers an instruction to tell the caller not to share card or SSN numbers on the line (PCI DSS).
+- **Evidence for an auditor**: `pii.redacted` audit events record the kinds and source, never the value, inside
+  the tamper-evident hash chain. That maps onto SOC 2 CC6/CC7 (access and change logging), C1 (confidentiality)
+  and P-series privacy criteria (collection limitation, minimal disclosure), CCPA data minimization, and PCI DSS
+  (no cardholder data stored).
+- **Not covered**: Guava (the voice vendor) still hears and keeps the raw audio and its own transcript; a
+  production deployment needs a DPA with Guava and its retention settings. Retention/deletion schedules for
+  our own logs aren't implemented yet.
+
+Demo: pick any incident and location and set the caller to **"Caller overshares SSN, birthday, card"**, or play
+the `pii_rent` sample (it's second in the demo reel).
+
 ## Run it
 
 ```bash
