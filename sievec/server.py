@@ -18,7 +18,7 @@ from . import history, llm
 from .audit import audit
 from .bus import bus
 from .rules import LEARNED_DIR, rules
-from .sim import SCENARIOS, run_scenario
+from .sim import SCENARIOS, run_reel, run_scenario, stop_reel
 
 STATIC = Path(__file__).resolve().parent.parent / "static"
 
@@ -132,6 +132,13 @@ def create_app() -> FastAPI:
     @app.get("/api/scenarios")
     async def scenarios():
         return [{"id": k, "title": v["title"]} for k, v in SCENARIOS.items()]
+
+    @app.post("/api/reel")
+    async def reel(stop: bool = False):
+        if stop:
+            stop_reel()
+            return {"playing": False}
+        return {"playing": True, "started": run_reel()}
 
     @app.post("/api/simulate/{name}")
     async def simulate(name: str):

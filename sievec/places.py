@@ -40,7 +40,7 @@ LA_CITY_NEIGHBORHOODS = [
     "Koreatown", "Mid-City", "Westwood", "Brentwood", "Bel Air", "Pacific Palisades", "Venice",
     "Mar Vista", "Palms", "Playa del Rey", "Playa Vista", "Westchester", "San Pedro", "Wilmington",
     "Harbor City", "Watts", "South LA", "South Los Angeles", "Leimert Park", "Hyde Park",
-    "Downtown", "DTLA", "Chinatown", "Little Tokyo", "Arts District", "Fairfax", "Hancock Park",
+    "Downtown LA", "Downtown Los Angeles", "DTLA", "Chinatown", "Little Tokyo", "Arts District", "Fairfax", "Hancock Park",
     "Atwater Village", "Glassell Park", "Cypress Park", "Mount Washington", "Porter Ranch",
     "Arleta", "Mission Hills", "North Hills", "Lake Balboa", "Valley Glen", "Shadow Hills",
     "Exposition Park", "West Adams", "Crenshaw", "Baldwin Hills", "Del Rey", "Sawtelle",
@@ -135,8 +135,14 @@ def known_place(location: str) -> dict[str, Any] | None:
 def _fuzzy_place(loc: str, learned: list[str]) -> dict[str, Any] | None:
     """Speech recognition mangles place names ("Landora" for Glendora). Snap
     single words and word pairs to the closest known place, if close enough."""
-    words = re.findall(r"[a-z']+", loc)
-    grams = words + [" ".join(words[i:i + 2]) for i in range(len(words) - 1)]
+    # Generic words ("downtown", "north", "park") make "downtown san" look like
+    # "Downtown LA"; never fuzzy-match on them.
+    generic = {"downtown", "north", "south", "east", "west", "city", "park", "hills", "valley", "heights",
+               "beach", "street", "avenue", "the", "of", "in", "near", "on", "and", "at", "by", "lake", "village"}
+    words = [w for w in re.findall(r"[a-z']+", loc)]
+    grams = [w for w in words if w not in generic] + [
+        " ".join(words[i:i + 2]) for i in range(len(words) - 1)
+        if words[i] not in generic and words[i + 1] not in generic]
     tables = [(UNINCORPORATED, "la_county"), (COUNTY_CITIES + learned, "city"), (LA_CITY_NEIGHBORHOODS, "la_city")]
     best: tuple[float, str, str] | None = None
     for names, kind in tables:

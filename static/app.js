@@ -759,6 +759,14 @@ async function loadScenarios() {
   const list = await (await fetch("/api/scenarios")).json();
   $("sim-select").replaceChildren(...list.map((s) => new Option(s.title, s.id)));
 }
+let reelOn = false;
+$("reel").onclick = async () => {
+  reelOn = !reelOn;
+  state.follow = true;
+  $("follow-live").checked = true;
+  await fetch(`/api/reel${reelOn ? "" : "?stop=true"}`, { method: "POST" });
+  $("reel").textContent = reelOn ? "Stop demo reel" : "Play demo reel";
+};
 $("sim-run").onclick = async () => {
   state.follow = true;
   await fetch(`/api/simulate/${$("sim-select").value}`, { method: "POST" });

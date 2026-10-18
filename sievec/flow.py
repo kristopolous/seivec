@@ -239,6 +239,12 @@ def _decide(call_id, service_value, location, transcript, guess, say) -> Outcome
     fallback = False
     if cell is None and place["kind"] == "other_city":
         cell, fallback = rules.lookup("general", key), True
+    if cell is None and place["kind"] == "other_city":
+        # Last resort for another city: its city hall, searched by name. Never
+        # Los Angeles County's general line for a city that isn't ours.
+        city = place["name"].replace("City of ", "")
+        cell = learn.learn_service(key, city, "general", learn_progress)
+        fallback = True
     if cell is None:
         cell, fallback = rules.lookup("general", "la_city" if place["kind"] == "la_city" else "la_county"), True
     if fallback:
