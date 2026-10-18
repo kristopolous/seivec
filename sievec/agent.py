@@ -21,7 +21,9 @@ agent = guava.Agent(
         "Answer one number for every non-emergency city and county service in Los Angeles County. "
         "Confirm where the problem is, find out what the caller needs, and connect them to the office that handles it."
     ),
-    pronunciations={"Sievec": "civix", "LADOT": "L A dot", "LADWP": "L A D W P", "StreetsLA": "Streets L A"},
+    # Say "Los Angeles", never "L.A.": the voice reads "LA" as Louisiana.
+    pronunciations={"Sievec": "civix", "LA": "Los Angeles", "L.A.": "Los Angeles", "LADOT": "L A dot",
+                    "LADWP": "L A D W P", "StreetsLA": "Streets L A", "LASAN": "L A san"},
 )
 
 
@@ -55,10 +57,11 @@ def on_call_start(call: guava.Call) -> None:
     call.set_task(
         "intake",
         objective=(
-            "Greet the caller as Sievec, the LA city and county services line. Learn what they need and "
+            "Greet the caller as Sievec, the Los Angeles city and county services line. Learn what they need and "
             "where. Keep it short and warm. If they already said the problem, don't make them repeat it. "
             "If they mention an accident, a fall, or anything where someone could be hurt, ask whether anyone "
-            "is injured; if so, tell them to hang up and dial 911 now. Never promise when a crew will arrive."
+            "is injured; if so, tell them to hang up and dial 911 now. Never promise when a crew will arrive. "
+            "Always say \"Los Angeles\" in full, never \"L.A.\""
         ),
         checklist=[
             guava.Field(

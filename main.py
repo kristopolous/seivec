@@ -99,7 +99,23 @@ def main() -> None:
             return
 
     from sievec.agent import run
-    run(phone, webrtc_code)
+    # Keep the dashboard up and reattach to Guava if its connection drops
+    # ("reconnection-failed" ends the runner instead of raising).
+    delay = 2
+    while True:
+        started = time.time()
+        try:
+            run(phone, webrtc_code)
+            log.warning("Guava listeners stopped; reconnecting in %ds", delay)
+        except KeyboardInterrupt:
+            return
+        except Exception:  # noqa: BLE001
+            log.exception("Guava runner crashed; reconnecting in %ds", delay)
+        try:
+            time.sleep(delay)
+        except KeyboardInterrupt:
+            return
+        delay = 2 if time.time() - started > 120 else min(delay * 2, 60)
 
 
 if __name__ == "__main__":

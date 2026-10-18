@@ -66,7 +66,7 @@ def briefing(call_id: str, decision: dict[str, Any], location: str) -> dict[str,
     ref = call_id[-6:].upper()
     where = location if location and location.lower() not in ("yes", "yeah") else place["name"]
     script = (
-        f"Hi, this is Rosa, an automated assistant with Sievec, the LA city and county services line. "
+        f"Hi, this is Rosa, an automated assistant with Sievec, the Los Angeles city and county services line. "
         f"I have a resident on the line who needs {cat['label'].lower()}, at {where}, {place['name']}. "
         + (f"In their words: \"{words}\". " if words else "")
         + (f"Their callback number is {_spoken_phone(callback)}. " if callback else "")
@@ -236,6 +236,6 @@ def answer_question(call_id: str, question: str) -> str:
     if lanes:
         cell = rules.lookup(lanes[0]["id"], "la_city")
         if cell:
-            return f"In the City of LA that's {cell['department']}, {cell['phone_display']}."
+            return f"In the City of Los Angeles that's {cell['department']}, {cell['phone_display']}."
     return "I don't have that detail, but I can connect you with the office that does."
 

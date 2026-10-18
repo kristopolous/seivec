@@ -15,7 +15,7 @@ from . import flow, places
 from .bus import bus
 from .rules import rules
 
-GREETING = "Sievec, LA city and county services. This is Rosa. What can I help you with?"
+GREETING = "Sievec, Los Angeles city and county services. This is Rosa. What can I help you with?"
 
 SCENARIOS = {
     "possum": {
