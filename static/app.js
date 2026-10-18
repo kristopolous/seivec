@@ -779,7 +779,7 @@ $("reel").onclick = async () => {
   state.follow = true;
   $("follow-live").checked = true;
   await fetch(`/api/reel${reelOn ? "" : "?stop=true"}`, { method: "POST" });
-  $("reel").textContent = reelOn ? "Stop demo reel" : "Play demo reel";
+  $("reel").textContent = reelOn ? "Stop demo reel" : "Demo reel";
 };
 $("sim-run").onclick = async () => {
   state.follow = true;
