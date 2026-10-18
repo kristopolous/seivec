@@ -116,8 +116,10 @@ select { border: 1px solid var(--rule); background: var(--panel); border-radius:
 
 /* talk column */
 .talk { display: grid; grid-template-rows: auto auto auto auto 1fr auto; gap: 12px; overflow: hidden; }
-.talk-head { display: flex; align-items: center; gap: 12px; }
-.s1 { font-size: 13px; color: var(--muted); }
+.talk-head { display: grid; grid-template-columns: auto 1fr; align-items: baseline; column-gap: 10px; row-gap: 2px; min-width: 0; }
+.talk-head .col-title { white-space: nowrap; }
+.talk-head .chip { justify-self: start; font-size: 12px; }
+.s1 { grid-column: 1 / -1; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .s1 b { color: var(--ink); font-weight: 600; }
 
 /* pipeline: a real sequence, so it's numbered; one step per row */
@@ -359,3 +361,6 @@ select { border: 1px solid var(--rule); background: var(--panel); border-radius:
 .log-search input:focus-visible { outline: 2px solid var(--amber); outline-offset: 0; }
 .log-what mark { background: var(--hi); color: var(--hi-ink); border-radius: 2px; padding: 0 1px; }
 .log-none { padding: 10px 16px; color: var(--muted); font-size: 13px; }
+
+.linkbtn { border: 0; background: none; padding: 0; color: var(--city); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.linkbtn[hidden] { display: none; }

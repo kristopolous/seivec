@@ -107,6 +107,14 @@ def create_app() -> FastAPI:
         yield
 
     app = FastAPI(title="Sievec", lifespan=lifespan)
+
+    @app.middleware("http")
+    async def no_cache(request, call_next):
+        # The dashboard changes often during the demo; never serve a stale page.
+        response = await call_next(request)
+        if request.url.path == "/" or request.url.path.startswith("/static/"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
     @app.get("/")

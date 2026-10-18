@@ -43,7 +43,8 @@ function handle(msg) {
       state.traces = msg.traces || [];
       state.rules = msg.rules;
       state.stats = msg.stats;
-      if (!state.selected && msg.calls[0]) state.selected = msg.calls[0].id;
+      // Open on the overview unless a call is live right now.
+      if (!state.selected) state.selected = msg.calls.find((c) => ["listening", "routing", "transferring"].includes(c.status))?.id || null;
       renderConfig(); buildWall(); renderAll();
       break;
     case "call":
@@ -164,6 +165,22 @@ function highlighted(text, q) {
   return span;
 }
 
+// Back to the overview: no call selected, every option on the board.
+function deselect() {
+  if (!state.selected) return;
+  state.selected = null;
+  state.follow = false;
+  $("follow-live").checked = false;
+  state.audit = [];
+  renderAll();
+}
+$("show-all").onclick = deselect;
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || !$("hood").hidden || !$("statsview").hidden) return;
+  if (document.activeElement === $("log-search") && $("log-search").value) return; // Esc clears search first
+  deselect();
+});
+
 function selectCall(c, { follow } = {}) {
   state.selected = c.id;
   state.follow = follow ?? isLive(c);
@@ -200,10 +217,12 @@ function renderCalls() {
       const what = row.querySelector(".log-what");
       what.replaceChildren(`${hit.line.role === "caller" ? "Caller" : hit.line.role === "system" ? "Sievec" : "Rosa"}: `, highlighted(hit.line.text, q));
     }
-    row.onclick = () => selectCall(c);
+    row.onclick = () => (c.id === state.selected ? deselect() : selectCall(c));
+    row.title = c.id === state.selected ? "Click again to show all" : "";
     nodes.push(row);
   }
   list.replaceChildren(...nodes);
+  $("show-all").hidden = !state.selected;
 }
 
 $("follow-live").onchange = (e) => {
@@ -307,14 +326,14 @@ function renderS1(c) {
   const r = c?.system1;
   if (!r) { s.hidden = true; return; }
   s.hidden = false;
-  const pct = (x) => `${Math.round(x * 100)}%`;
-  const bits = [
-    `danger ${pct(r.emergency ?? 0)}`, `wants a person ${pct(r.wants_human ?? 0)}`, `dislikes AI ${pct(r.dislikes_ai ?? 0)}`,
-    `urgency ${(r.urgency ?? 0).toFixed(1)}/3`, r.pace && r.pace !== "none" ? `pace: ${r.pace}` : null,
-  ].filter(Boolean).join(", ");
-  s.replaceChildren(`System One (${state.config.llm?.system1_model || "nimble"}, ${r.latency_ms} ms): `,
-    el("b", null, `${r.label || "?"} ${r.confidence != null ? pct(r.lanes?.[0]?.score ?? r.confidence) : ""}`),
-    `. ${bits}`);
+  const pct = (x) => `${Math.round((x ?? 0) * 100)}%`;
+  const top = r.lanes?.[0]?.score ?? r.confidence;
+  const signals = [`danger ${pct(r.emergency)}`, `person ${pct(r.wants_human)}`, `anti-AI ${pct(r.dislikes_ai)}`,
+    `urgency ${(r.urgency ?? 0).toFixed(1)}`, r.pace && r.pace !== "none" ? `pace ${r.pace}` : null].filter(Boolean).join(", ");
+  s.replaceChildren(`System One ${(r.latency_ms / 1000).toFixed(1)} s: `, el("b", null, `${r.label || "?"} ${pct(top)}`), `. ${signals}`);
+  s.title = `System One (${state.config.llm?.system1_model || "nimble"}, ${r.latency_ms} ms): ${r.label} ${pct(top)}. ` +
+    `Danger ${pct(r.emergency)}, wants a person ${pct(r.wants_human)}, dislikes AI ${pct(r.dislikes_ai)}, ` +
+    `urgency ${(r.urgency ?? 0).toFixed(1)} of 3, pace ${r.pace}.`;
 }
 
 // Past real calls: if our live capture is empty, ask the server to pull

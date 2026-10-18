@@ -36,6 +36,7 @@
     <aside class="calls" aria-label="Call log">
       <div class="log-head">
         <h2 class="col-title">Call log</h2>
+        <button class="linkbtn" id="show-all" type="button" hidden>Show all</button>
         <label class="check"><input type="checkbox" id="follow-live" checked> Follow live calls</label>
       </div>
       <div class="log-search">
@@ -50,8 +51,8 @@
       <div class="alert" id="alert" role="alert" hidden></div>
       <div class="talk-head">
         <h2 class="col-title" id="talk-title">Transcript</h2>
-        <span class="s1" id="s1" hidden></span>
         <span class="chip" id="speed" hidden></span>
+        <span class="s1" id="s1" hidden></span>
       </div>
       <div class="playback" id="playback" hidden>
         <audio id="recording" controls preload="none"></audio>

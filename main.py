@@ -40,6 +40,16 @@ from sievec.server import create_app  # noqa: E402
 PORT = int(os.environ.get("SIEVEC_PORT", "8311"))
 
 
+def new_webrtc_code() -> str | None:
+    """A browser-calling code. Guava being briefly unreachable must not stop startup."""
+    import guava
+    try:
+        return guava.Client().create_webrtc_agent(ttl=timedelta(hours=12))
+    except Exception as exc:  # noqa: BLE001
+        logging.getLogger("sievec").warning("Couldn't get a WebRTC code from Guava (%s); retrying later", exc)
+        return None
+
+
 def serve_dashboard() -> None:
     config = uvicorn.Config(create_app(), host="0.0.0.0", port=PORT, log_level="warning")
     threading.Thread(target=uvicorn.Server(config).run, daemon=True, name="dashboard").start()
@@ -69,8 +79,7 @@ def main() -> None:
     if not args.sim_only:
         if not os.environ.get("GUAVA_API_KEY"):
             raise SystemExit("Set GUAVA_API_KEY (https://app.goguava.ai/dashboard/api-keys), or pass --sim-only.")
-        import guava
-        webrtc_code = args.webrtc or guava.Client().create_webrtc_agent(ttl=timedelta(hours=12))
+        webrtc_code = args.webrtc or new_webrtc_code()
 
     bus.config = {
         "phone": phone,
@@ -104,6 +113,9 @@ def main() -> None:
     delay = 2
     while True:
         started = time.time()
+        if not webrtc_code and not args.webrtc:
+            webrtc_code = new_webrtc_code()
+            bus.config["webrtc_code"] = webrtc_code
         try:
             run(phone, webrtc_code)
             log.warning("Guava listeners stopped; reconnecting in %ds", delay)
