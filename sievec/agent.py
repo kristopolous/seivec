@@ -138,7 +138,7 @@ def adjust_speed(call: guava.Call, event: CallerSpeechEvent) -> None:
 
 
 WANTS_HUMAN = re.compile(
-    r"\b(hate (ai|a\.i\.|robots?|bots?|this)|(talk|speak) to (a |an )?(real |actual |live )?(person|human|someone)|"
+    r"\b(hate (ai|a\.i\.|robots?|bots?|this (robot|bot|ai|machine|thing))|(talk|speak) to (a |an )?(real |actual |live )?(person|human|someone)|"
     r"real person|human being|representative|operator|not a (robot|bot|machine)|stop (being )?(a )?robot|"
     r"is this (a |an )?(robot|bot|ai|recording))\b", re.I)
 
