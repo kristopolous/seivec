@@ -157,9 +157,9 @@ def _decide(call_id, service_value, location, transcript, guess, say) -> Outcome
         bus.step(call_id, "rule", "done", "Emergency", "Never transferred")
         bus.step(call_id, "connect", "done", "Dial 911")
         bus.status(call_id, "emergency", decision=decision, alert="Emergency. Caller told to hang up and dial 911.")
-        extra = (" Tell them to get out of the building first, then call 911 or SoCalGas at 1-800-427-2200."
+        extra = (" Tell them to get out of the building first, then call nine-one-one or SoCalGas at 1-800-427-2200."
                  if cat["id"] == "gas_leak" else "")
-        return Outcome("hangup", instructions=f"Tell the caller to hang up and dial 911 right now.{extra}")
+        return Outcome("hangup", instructions=f"Tell the caller to hang up and dial nine-one-one right now.{extra}")
 
     if place["kind"] == "outside" or not place.get("key"):
         bus.step(call_id, "rule", "done", "Outside LA County")

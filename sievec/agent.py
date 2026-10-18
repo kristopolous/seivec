@@ -23,7 +23,10 @@ agent = guava.Agent(
     ),
     # Say "Los Angeles", never "L.A.": the voice reads "LA" as Louisiana.
     pronunciations={"Sievec": "civix", "LA": "Los Angeles", "L.A.": "Los Angeles", "LADOT": "L A dot",
-                    "LADWP": "L A D W P", "StreetsLA": "Streets L A", "LASAN": "L A san"},
+                    "LADWP": "L A D W P", "StreetsLA": "Streets L A", "LASAN": "L A san",
+                    # Digit by digit, not "nine hundred eleven".
+                    "911": "nine one one", "9-1-1": "nine one one", "311": "three one one",
+                    "3-1-1": "three one one", "211": "two one one", "2-1-1": "two one one"},
 )
 
 
@@ -60,7 +63,7 @@ def on_call_start(call: guava.Call) -> None:
             "Greet the caller as Sievec, the Los Angeles city and county services line. Learn what they need and "
             "where. Keep it short and warm. If they already said the problem, don't make them repeat it. "
             "If they mention an accident, a fall, or anything where someone could be hurt, ask whether anyone "
-            "is injured; if so, tell them to hang up and dial 911 now. Never promise when a crew will arrive. "
+            "is injured; if so, tell them to hang up and dial nine-one-one now. Never promise when a crew will arrive. "
             "Always say \"Los Angeles\" in full, never \"L.A.\""
         ),
         checklist=[
@@ -98,7 +101,7 @@ def on_caller_speech(call: guava.Call, event: CallerSpeechEvent) -> None:
         bus.alert(call.id, "Possible emergency. Agent told the caller to dial 911.")
         call.send_instruction(
             "The caller may be describing an emergency. Calmly tell them that if anyone is in danger, or there's "
-            "fire, a gas smell, or a downed power line, they should hang up and dial 911 now. If they say it's "
+            "fire, a gas smell, or a downed power line, they should hang up and dial nine-one-one now. If they say it's "
             "not an emergency, keep helping them."
         )
 
