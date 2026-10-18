@@ -161,21 +161,40 @@ class Rules:
             "score": round((s / total) * min(1.0, best / 4.0) ** 0.35, 3),
         } for cid, s in top]
 
+    # System One's pick must clear this to count as one of our services;
+    # below it (or if it picks "general") nothing we have fits.
+    FIT = 0.35
+
+    def classify(self, text: str) -> dict[str, Any]:
+        """Which of our services is this? System One decides over the whole
+        list (it knows a snake is wildlife and a table is a bulky item);
+        keywords are only the fallback if System One is unreachable."""
+        try:
+            s1 = self.ask_systemone(text)
+            lanes = s1["lanes"]
+            top = lanes[0] if lanes else None
+            fits = bool(top) and top["id"] != "general" and top["score"] >= self.FIT
+            return {"id": top["id"] if fits else "general", "fits": fits, "lanes": lanes,
+                    "p": top["score"] if top else 0.0, "by": "System One"}
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("System One unavailable, falling back to keywords: %s", exc)
+            lanes = self.rank(text)
+            top = lanes[0] if lanes else None
+            fits = bool(top) and top["id"] != "general" and top["raw"] >= 2.0
+            return {"id": top["id"] if fits else "general", "fits": fits, "lanes": lanes,
+                    "p": top["score"] if top else 0.0, "by": "keywords (System One unavailable)"}
+
     def pick_category(self, text: str, hint_label: str | None = None) -> dict[str, Any]:
         """Category for a request. Returns {id, label, method, lanes}."""
-        if hint_label and hint_label.lower() in self.label_to_id:
+        if hint_label and hint_label.lower() in self.label_to_id and self.label_to_id[hint_label.lower()] != "general":
             cid = self.label_to_id[hint_label.lower()]
-            return {"id": cid, "label": self.categories[cid]["label"], "method": "caller confirmed (Guava multiple choice)",
-                    "lanes": self.rank(text)}
-        lanes = self.rank(text)
-        if lanes:
-            top = lanes[0]
-            second = lanes[1]["raw"] if len(lanes) > 1 else 0.0
-            if top["raw"] >= 2.0 and top["raw"] >= 1.6 * second:
-                return {"id": top["id"], "label": top["label"], "method": "keyword rule", "lanes": lanes}
-        cid = self._llm_category(text, lanes)
-        return {"id": cid, "label": self.categories[cid]["label"],
-                "method": "System One (keywords unsure)", "lanes": lanes}
+            return {"id": cid, "label": self.categories[cid]["label"],
+                    "method": "System One pick, confirmed by the caller", "lanes": self.rank(text)}
+        c = self.classify(text)
+        cid = c["id"]
+        method = (f"{c['by']}: {self.categories[cid]['label']} {round(c['p'] * 100)}%" if c["fits"]
+                  else f"{c['by']}: none of our services fit")
+        return {"id": cid, "label": self.categories[cid]["label"], "method": method, "lanes": c["lanes"]}
 
     def systemone_questions(self) -> dict[str, Any]:
         """Everything System One decides about a caller's words, in one call."""

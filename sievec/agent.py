@@ -86,16 +86,18 @@ def on_call_start(call: guava.Call) -> None:
 
 @agent.on_search_query("service")
 def search_service(call: guava.Call, query: str):
-    """Guava asks us for options; keyword ranking answers instantly. If nothing
-    in the rules clearly fits ("public library"), offer "Something else" as a
-    real match so Guava moves on; routing then finds the office on the web."""
-    lanes = rules.rank(f"{query} {caller_text(call.id)}")
-    strong = [l["label"] for l in lanes if l["raw"] >= 2.0 and l["id"] != "general"]
-    if strong:
-        return strong, [l["label"] for l in lanes if l["label"] not in strong]
-    bus.annotate(call.id, f"\"{query}\" isn't in the rules yet. Taking it as \"Something else\": Sievec will look "
-                          f"up the right office on the web once it knows where.", "search")
-    return ["Something else"] + [l["label"] for l in lanes if l["id"] != "general"][:2], []
+    """Guava asks which of our services fits. System One decides over the
+    whole list; the caller then confirms the pick. Only when none of our
+    services fits does it become "Something else" (found on the web later)."""
+    c = rules.classify(f"{query}. {caller_text(call.id)}")
+    good = [l for l in c["lanes"] if l["id"] != "general" and l["score"] >= 0.15]
+    if c["fits"] and good:
+        bus.annotate(call.id, f"System One: \"{query}\" → {good[0]['label']} ({round(good[0]['score'] * 100)}%). "
+                              f"Asking the caller to confirm.", "search")
+        return [l["label"] for l in good], ["Something else"]
+    bus.annotate(call.id, f"System One: none of our services fit \"{query}\". Taking it as \"Something else\": "
+                          f"Sievec will find the right office on the web once it knows where.", "search")
+    return ["Something else"] + [l["label"] for l in good][:2], []
 
 
 SPEEDS = ["x-slow", "slow", "medium", "fast", "x-fast"]
@@ -195,10 +197,9 @@ def act_on_systemone(call: guava.Call, r: dict) -> None:
         set_urgent(call, f"System One: danger {r['emergency']:.2f}")
         mark_emergency(call, f"System One: danger probability {r['emergency']:.2f}", warn=True)
         return
-    # A clear service means the caller actually named one ("pothole"), judged
-    # from their words; System One's service guess for "fuck AI" is noise.
-    kw = rules.rank(caller_text(call.id))
-    clear_service = bool(kw) and kw[0]["id"] != "general" and kw[0]["raw"] >= 2.0
+    # "I need a human to look at this pothole" names a service: route it, don't escalate.
+    top = (r.get("lanes") or [{}])[0]
+    clear_service = top.get("id") not in (None, "general") and top.get("score", 0) >= 0.7
     if r.get("dislikes_ai", 0) >= 0.9:
         # The caller doesn't like AI: the fallback is a person at 311, whatever they called about.
         escalate_to_311(call, f"System One: caller dislikes AI {r['dislikes_ai']:.2f}")
@@ -255,8 +256,7 @@ def mark_emergency(call: guava.Call, why: str, warn: bool) -> None:
 def on_caller_speech(call: guava.Call, event: CallerSpeechEvent) -> None:
     bus.speech(call.id, "caller", event.utterance, event.utterance_id)
     text = caller_text(call.id)
-    lanes = rules.rank(text)
-    bus.lanes(call.id, lanes)
+    # The bars come from System One's probabilities (set when its read returns).
     flow.schedule_system1(call.id, text, latest=event.utterance,
                           on_result=lambda r: act_on_systemone(call, r))
     adjust_speed(call, event)

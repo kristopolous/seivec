@@ -19,11 +19,11 @@ Every request to System One, `qwen3.8` and Parallel shows up with its full paylo
 
 ## How a call is routed
 
-The routing is a **decision table**, not an LLM judgment. Fast rules decide first, System One settles what the rules can't, and System 2 is only used to read the web.
+The routing is a **decision table**: System One decides which service and which jurisdiction cell applies, the table gives the department, and System 2 is only used to read the web. Pattern matching is used for one thing only: instant safety checks (911, "I hate AI") that fire before the model answers.
 
 1. **Area code.** The caller's number gives a first guess at the jurisdiction (213/323 → City of Los Angeles, 626 → San Gabriel Valley…). Rosa confirms it with the caller.
 2. **Location.** Resolved from a cache of Los Angeles neighborhoods, unincorporated communities and the county's 88 cities, with fuzzy matching for misheard names ("Landora" → Glendora). Anything else, anywhere, is placed with a web search.
-3. **Service.** Keyword rules score every caller utterance instantly. When they're unsure, **System One** picks from the services in the rules. Guava's searchable multiple-choice field confirms the choice with the caller.
+3. **Service.** **System One** picks from the full list of services in the rules (it knows a snake is wildlife and a table is a bulky item), and Guava's searchable multiple-choice field confirms the pick with the caller. Only when System One says none of our services fit does the request go to web discovery. Keywords are used only if System One is unreachable.
 4. **Rule.** `(service × jurisdiction) → department`, read from `data/rules.json` plus everything learned on earlier calls.
 5. **Connect.** Rosa says: *"Ok great, I'm going to forward you to LA Sanitation. I'll tell them what's going on and transfer the call."* Sievec then produces the briefing the outbound leg would speak to the department.
 
