@@ -21,7 +21,7 @@ agent = guava.Agent(
         "Answer one number for every non-emergency city and county service in Los Angeles County. "
         "Confirm where the problem is, find out what the caller needs, and connect them to the office that handles it."
     ),
-    pronunciations={"Sievec": "SIV-ick", "LADOT": "L A dot", "LADWP": "L A D W P", "StreetsLA": "Streets L A"},
+    pronunciations={"Sievec": "civix", "LADOT": "L A dot", "LADWP": "L A D W P", "StreetsLA": "Streets L A"},
 )
 
 
