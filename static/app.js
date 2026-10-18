@@ -144,6 +144,26 @@ const orderedCalls = () => {
   return [...all.filter(isLive), ...all.filter((c) => !isLive(c))];
 };
 
+// Transcript search: matches what was said, the caller's number, and the outcome.
+const searchTerm = () => $("log-search").value.trim().toLowerCase();
+function searchHit(c, q) {
+  if (!q) return { ok: true };
+  const line = (c.transcript || []).find((l) => l.text.toLowerCase().includes(q));
+  if (line) return { ok: true, line };
+  const digits = q.replace(/\D/g, "");
+  if (digits.length >= 3 && (c.caller || "").includes(digits)) return { ok: true };
+  if (outcomeText(c).toLowerCase().includes(q)) return { ok: true };
+  return { ok: false };
+}
+function highlighted(text, q) {
+  const span = el("span");
+  const i = text.toLowerCase().indexOf(q);
+  if (i < 0) { span.textContent = text; return span; }
+  const start = Math.max(0, i - 30);
+  span.append((start ? "…" : "") + text.slice(start, i), el("mark", null, text.slice(i, i + q.length)), text.slice(i + q.length));
+  return span;
+}
+
 function selectCall(c, { follow } = {}) {
   state.selected = c.id;
   state.follow = follow ?? isLive(c);
@@ -153,9 +173,12 @@ function selectCall(c, { follow } = {}) {
 
 function renderCalls() {
   const list = $("call-list");
-  const calls = orderedCalls();
-  $("calls-empty").hidden = calls.length > 0;
+  const q = searchTerm();
+  const all = orderedCalls();
+  const calls = all.filter((c) => searchHit(c, q).ok);
+  $("calls-empty").hidden = all.length > 0;
   const nodes = [];
+  if (q && !calls.length) nodes.push(el("div", "log-none", `No calls mention "${q}".`));
   let group = null;
   for (const c of calls) {
     const g = isLive(c) ? "Live now" : dayLabel(c.started_at);
@@ -171,6 +194,11 @@ function renderCalls() {
       el("span", "log-time", new Date(c.started_at * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })),
       who, el("span", `badge ${kind}`, label), el("span", "log-what", outcomeText(c)),
     );
+    const hit = searchHit(c, q);
+    if (q && hit.line) {
+      const what = row.querySelector(".log-what");
+      what.replaceChildren(`${hit.line.role === "caller" ? "Caller" : "Rosa"}: `, highlighted(hit.line.text, q));
+    }
     row.onclick = () => selectCall(c);
     nodes.push(row);
   }
@@ -182,10 +210,18 @@ $("follow-live").onchange = (e) => {
   const liveCall = orderedCalls().find(isLive);
   if (state.follow && liveCall) selectCall(liveCall, { follow: true });
 };
+$("log-search").addEventListener("input", () => renderCalls());
+$("log-search").addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { e.target.value = ""; renderCalls(); }
+  if (e.key === "Enter") {
+    const first = orderedCalls().find((c) => searchHit(c, searchTerm()).ok);
+    if (first) selectCall(first, { follow: false });
+  }
+});
 $("call-list").addEventListener("keydown", (e) => {
   if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
   e.preventDefault();
-  const calls = orderedCalls();
+  const calls = orderedCalls().filter((c) => searchHit(c, searchTerm()).ok);
   const i = calls.findIndex((c) => c.id === state.selected);
   const next = calls[Math.max(0, Math.min(calls.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))];
   if (next) {

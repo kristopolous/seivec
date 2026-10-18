@@ -44,6 +44,24 @@ DEPT_FIELDS = ("id", "jurisdiction", "department", "service", "phone", "phone_di
                "hours", "description", "notes", "source_url", "verified")
 
 
+# Danger words. A match flags the call as an emergency no matter how the
+# service ranking comes out; phrase lists alone miss "my house IS on fire".
+EMERGENCY = re.compile(
+    r"\b(on fire|catch(ing)? fire|caught fire|(house|building|car|apartment)\b.{0,15}\bfire|smoke (is )?(coming|everywhere|pouring)|"
+    r"bleeding|unconscious|not breathing|can'?t breathe|heart attack|stroke|overdos(e|ing)|"
+    r"gun|shot|shooting|stabb(ed|ing)|being attacked|attacking (me|us|someone)|break[- ]?in|breaking in|"
+    r"smell(s|ing)? (of )?gas|gas leak|power line(s)? (is |are )?(down|sparking)|downed (power )?line|"
+    r"(someone|somebody|person|people|he|she|they)('s| is| are| got)? (hurt|injured|trapped)|"
+    r"crash with injur|hit by a (car|truck)|drowning|explosion)",
+    re.I,
+)
+
+
+def emergency_in(text: str) -> str | None:
+    m = EMERGENCY.search(text or "")
+    return m.group(0) if m else None
+
+
 def tokens(text: str) -> list[str]:
     out = []
     for w in re.findall(r"[a-z0-9']+", text.lower()):

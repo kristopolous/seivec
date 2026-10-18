@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 import guava
 from guava.events import AgentSpeechEvent, BotSessionEnded, CallerSpeechEvent
@@ -10,7 +11,7 @@ from guava.types.call_info import PSTNCallInfo, WebRTCCallInfo
 
 from . import flow, history, places
 from .bus import bus
-from .rules import rules
+from .rules import emergency_in, rules
 
 logger = logging.getLogger("sievec.agent")
 
@@ -89,6 +90,23 @@ def search_service(call: guava.Call, query: str):
     return matches, [c for c in common if c not in matches]
 
 
+def mark_emergency(call: guava.Call, why: str, warn: bool) -> None:
+    """Flag the call as an emergency (once). The call is logged as 911 even if
+    the caller simply hangs up to go dial it."""
+    if call.get_variable("emergency"):
+        return
+    call.set_variable("emergency", why)
+    bus.alert(call.id, f"Emergency: {why}. Caller told to hang up and dial 911.")
+    bus.step(call.id, "rule", "done", "Emergency", f"Danger detected: {why}")
+    bus.step(call.id, "connect", "done", "Dial 911", "Never transferred")
+    bus.status(call.id, "emergency")
+    if warn:
+        call.send_instruction(
+            "The caller may be describing an emergency. Calmly tell them to hang up and dial nine-one-one now. "
+            "If they clearly say it's not an emergency, keep helping them."
+        )
+
+
 @agent.on_caller_speech
 def on_caller_speech(call: guava.Call, event: CallerSpeechEvent) -> None:
     bus.speech(call.id, "caller", event.utterance, event.utterance_id)
@@ -96,19 +114,19 @@ def on_caller_speech(call: guava.Call, event: CallerSpeechEvent) -> None:
     lanes = rules.rank(text)
     bus.lanes(call.id, lanes)
     flow.schedule_system1(call.id, text)
-    if lanes and lanes[0]["emergency"] and lanes[0]["raw"] >= 2 and not call.get_variable("emergency_warned"):
-        call.set_variable("emergency_warned", True)
-        bus.alert(call.id, "Possible emergency. Agent told the caller to dial 911.")
-        call.send_instruction(
-            "The caller may be describing an emergency. Calmly tell them that if anyone is in danger, or there's "
-            "fire, a gas smell, or a downed power line, they should hang up and dial nine-one-one now. If they say it's "
-            "not an emergency, keep helping them."
-        )
+    danger = emergency_in(event.utterance)
+    if danger:
+        mark_emergency(call, f'caller said "{danger}"', warn=True)
 
 
 @agent.on_agent_speech
 def on_agent_speech(call: guava.Call, event: AgentSpeechEvent) -> None:
     bus.speech(call.id, "agent", event.utterance, interrupted=event.interrupted)
+    # Rosa can send a caller to 911 on her own (the task tells her to when
+    # someone is hurt). If she does, the call is an emergency.
+    if re.search(r"\b(9-?1-?1|nine[- ]one[- ]one)\b", event.utterance, re.I) and re.search(
+            r"\b(dial|call|hang up)\b", event.utterance, re.I):
+        mark_emergency(call, "agent sent the caller to 911", warn=False)
 
 
 @agent.on_question
@@ -140,6 +158,8 @@ def on_session_end(call: guava.Call, event: BotSessionEnded) -> None:
     if event.termination_reason == "bot-transfer":
         bus.step(call.id, "connect", "done", None, "Connected")
         bus.status(call.id, "transferred")
+    elif call.get_variable("emergency"):
+        pass  # stays "emergency"; bus.ended keeps it
     elif snap.get("status") == "transferring" and flow.TRANSFER_MODE == "handoff":
         cell = (snap.get("decision") or {}).get("cell") or {}
         bus.step(call.id, "connect", "done", cell.get("phone_display"), "Handoff briefing ready")

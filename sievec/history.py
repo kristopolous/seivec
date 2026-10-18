@@ -40,10 +40,27 @@ def load_past_calls() -> int:
             except (json.JSONDecodeError, KeyError):
                 continue
     recent = sorted(latest.values(), key=lambda c: c["started_at"])[-MAX_CALLS:]
+    for c in recent:
+        tag_emergency(c)
     with bus._lock:
         for c in recent:
             bus.calls.setdefault(c["id"], c)
     return len(recent)
+
+
+def tag_emergency(c: dict[str, Any]) -> None:
+    """Older calls ended as plain hang-ups even when the caller was sent to 911."""
+    import re
+    from .rules import emergency_in
+    if c.get("status") != "ended" or c.get("decision"):
+        return
+    lines = c.get("transcript") or []
+    danger = next((emergency_in(l["text"]) for l in lines if l["role"] == "caller" and emergency_in(l["text"])), None)
+    sent = any(l["role"] == "agent" and re.search(r"\b(9-?1-?1|nine[- ]one[- ]one)\b", l["text"], re.I) for l in lines)
+    if danger or sent:
+        c["status"] = "emergency"
+        why = f'caller said "{danger}"' if danger else "agent sent the caller to 911"
+        c["alert"] = f"Emergency: {why}."
 
 
 def guava_transcript(call_id: str) -> list[dict[str, Any]] | None:
