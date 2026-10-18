@@ -145,6 +145,26 @@ def _decide(call_id, service_value, location, transcript, guess, say) -> Outcome
     bus.step(call_id, "service", "active", "classifying")
     cat = rules.pick_category(f"{service_value}. {caller_text}", hint_label=service_value)
     bus.lanes(call_id, cat["lanes"])
+    discovered_cell = None
+    if cat["id"] == "general" and place.get("key"):
+        # Not in the table: work out a search, and if it turns up a phone
+        # number, use it and keep it as a new service row.
+        bus.step(call_id, "service", "active", "Not in the rules", "Working out what to search for")
+        say("Tell the caller you're looking up the right office for that. Just a moment.")
+
+        def discover_progress(ev: dict[str, Any]) -> None:
+            learn_progress(ev)
+            if ev["state"] == "searching":
+                bus.step(call_id, "service", "active", ev["label"], f'Searching "{ev["query"]}"')
+
+        found = learn.discover(f"{service_value}. {caller_text}", place["key"], place["name"], discover_progress)
+        bus.broadcast({"type": "rules", "rules": rules.public_table()})
+        if found and found.get("cell"):
+            cat = {"id": found["category"], "label": found["label"], "lanes": cat["lanes"],
+                   "method": f'web search "{found["query"]}", added to the rules'}
+            discovered_cell = found["cell"]
+        elif found and found.get("existing"):
+            cat = {**cat, "id": found["category"], "method": "System 2 matched an existing service"}
     category = rules.categories[cat["id"]]
     bus.step(call_id, "service", "done", category["label"], cat["method"], data={"id": cat["id"]})
 
@@ -172,7 +192,7 @@ def _decide(call_id, service_value, location, transcript, guess, say) -> Outcome
     # 3. Rule lookup. A missing cell is filled by searching
     #    "<place> <service> phone number" and stored in the rules.
     key = place["key"]
-    cell = rules.lookup(cat["id"], key)
+    cell = discovered_cell or rules.lookup(cat["id"], key)
     if cell is None and place["kind"] == "other_city":
         city = place["name"].replace("City of ", "")
         query = learn.search_query(city, cat["id"])
@@ -226,16 +246,28 @@ def _decide(call_id, service_value, location, transcript, guess, say) -> Outcome
 
 
 def answer_question(call_id: str, question: str) -> str:
-    """on_question: facts from the decided cell, or a quick lookup."""
-    decision = (bus.get(call_id) or {}).get("decision") or {}
-    cell = decision.get("cell")
-    if cell:
-        return (f"{cell['department']} ({cell['service']}), phone {cell.get('phone_display')}. "
-                f"Hours: {cell.get('hours') or 'not listed'}. {cell.get('notes') or ''}")
-    lanes = rules.rank(question)
-    if lanes:
-        cell = rules.lookup(lanes[0]["id"], "la_city")
+    """on_question: same move as routing. Work out a search, read the pages,
+    answer from them, and keep the office + number as a rule."""
+    token = current_call.set(call_id)
+    try:
+        snap = bus.get(call_id) or {}
+        decision = snap.get("decision") or {}
+        said = " ".join(l["text"] for l in snap.get("transcript", []) if l["role"] == "caller")[-600:]
+        place = decision.get("place") or places.known_place(said) or {"key": "la_city", "name": "Los Angeles"}
+        bus.note(call_id, "question.asked", {"question": question})
+        found = learn.discover(said or question, place.get("key"), place.get("name", ""), learn_progress,
+                               question=question)
+        bus.broadcast({"type": "rules", "rules": rules.public_table()})
+        cell = (found or {}).get("cell")
+        answer = ((found or {}).get("answer") or "").strip()
         if cell:
-            return f"In the City of Los Angeles that's {cell['department']}, {cell['phone_display']}."
-    return "I don't have that detail, but I can connect you with the office that does."
-
+            reply = (f"{answer} " if answer else "") + (
+                f"That's {cell['department']}, {cell['phone_display']}. I can connect you if you'd like.")
+        else:
+            reply = answer or "I couldn't find that, but I can connect you with the office that handles it."
+        bus.note(call_id, "question.answered", {"question": question, "answer": reply,
+                                                "query": (found or {}).get("query"),
+                                                "source_url": (cell or {}).get("source_url")})
+        return reply
+    finally:
+        current_call.reset(token)

@@ -286,3 +286,108 @@ def warm_cities(cities: list[str], progress: Progress) -> None:
     for city in cities:
         learn_in_background(city_key(city), city, progress)
         time.sleep(0.2)
+
+
+def _place_words(key: str | None, name: str) -> str:
+    if key == "la_city":
+        return "Los Angeles"
+    if key == "la_county":
+        return "Los Angeles County"
+    return name.replace("City of ", "") if name else "Los Angeles"
+
+
+def discover(need: str, key: str | None, place_name: str, progress: Progress,
+             question: str | None = None) -> dict[str, Any] | None:
+    """Anything the table doesn't cover: figure out the search, run it, and if
+    there's a phone number, use it and keep it as a new service row.
+
+    Returns {category, label, cell, query, answer} or None."""
+    from .rules import slug
+    place = _place_words(key, place_name)
+    existing = ", ".join(f"{c['id']}" for c in rules.categories.values())
+    try:
+        plan, _ = complete_json(
+            f"A caller to the Los Angeles city and county services line needs something our routing table "
+            f"doesn't cover.\nWhat they said: {need}\n" + (f"Their question: {question}\n" if question else "")
+            + f"Where: {place}\n\nName the service they need in a few words, give 4-8 short phrases a caller "
+            f"might use for it, and write the web search a person would type to find the phone number of the "
+            f"office that handles it, in the form '<place> <service> phone number' (be specific: include the "
+            f"facility or branch if they named one).\nExisting service ids (reuse one only if it truly fits): "
+            f"{existing}",
+            {"type": "object", "properties": {
+                "service_id": {"type": "string", "description": "snake_case, e.g. library"},
+                "service_label": {"type": "string", "description": "e.g. Library"},
+                "description": {"type": "string"},
+                "keywords": {"type": "array", "items": {"type": "string"}},
+                "query": {"type": "string"}}},
+            system=2, purpose="plan a search for an unlisted service",
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("discover plan failed: %s", exc)
+        return None
+    cid = slug(plan.get("service_id") or plan.get("service_label") or "service")
+    label = (plan.get("service_label") or cid.replace("_", " ")).strip().capitalize()
+    query = (plan.get("query") or f"{place} {label} phone number").strip()
+    if cid in rules.categories and not rules.categories[cid].get("discovered"):
+        return {"category": cid, "label": rules.categories[cid]["label"], "cell": None, "query": query, "answer": None,
+                "existing": True}
+    col = key or "la_city"
+    emit = lambda state, **kw: progress({"key": col, "city": place, "category": cid,  # noqa: E731
+                                        "label": label, "state": state, "query": query, **kw})
+    emit("searching")
+    results = websearch.search(
+        f"{question or need} Find the official phone number for: {label}, {place}.",
+        [query, f"{place} {label} contact"], max_results=5, purpose=f'search "{query}"')
+    if key and key.startswith("city:"):
+        city = place
+        results = [r for r in results if re.search(rf"\b{re.escape(city)}\b", f"{r.get('title') or ''} {r['text']} {r['url']}", re.I)
+                   or re.sub(r"[^a-z]", "", city.lower()) in (r["url"] or "").lower()]
+    urls = [r["url"] for r in results][:3]
+    emit("reading", sources=urls)
+    snips = _snippets([{"url": r["url"], "content": r["text"]} for r in results])
+    pages_text = "\n\n".join(f"SOURCE {r['url']}\n{r['text'][:900]}" for r in results[:3])
+    if not snips:
+        pages = websearch.extract(urls, f"Phone number for {label} in {place}", purpose=f"read pages for {label}")
+        snips = _snippets(pages)
+        pages_text = "\n\n".join(f"SOURCE {p['url']}\n{p['content'][:1500]}" for p in pages[:2]) or pages_text
+    if not snips:
+        emit("failed", reason="no phone numbers in the results")
+        return None
+    listing = "\n".join(f"[{i}] {s['phone_display']}: {s['label']}" for i, s in enumerate(snips))
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    now = datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%A %B %-d, %Y %-I:%M %p")
+    try:
+        out, _ = complete_json(
+            f"Phone numbers found for '{label}' in {place}, each with its label:\n{listing}\n\n"
+            f"Page text:\n{pages_text}\n\nPick the number a resident should call for {label} "
+            f"(-1 if none clearly fits) and name the office."
+            + (f" Also answer the caller's question in one or two short spoken sentences, using only the page "
+               f"text. It is {now} in Los Angeles right now: compare against today's hours and say plainly whether "
+               f"it's open right now or already closed (and when it next opens, if the pages say). If the pages don't "
+               f"answer it, say you couldn't find it. Question: {question}"
+               if question else ""),
+            {"type": "object", "properties": {
+                "snippet": {"type": "integer"}, "department": {"type": "string"},
+                "answer": {"type": "string"}}},
+            system=2, purpose=f"pick the {label} number",
+        )
+    except Exception as exc:  # noqa: BLE001
+        emit("failed", reason=str(exc))
+        return None
+    idx = out.get("snippet")
+    if not isinstance(idx, int) or not 0 <= idx < len(snips):
+        emit("failed", reason="no clear match")
+        return {"category": cid, "label": label, "cell": None, "query": query, "answer": out.get("answer")}
+    s = snips[idx]
+    cell = {
+        "id": f"{col}:{cid}", "jurisdiction": col,
+        "department": (out.get("department") or label).strip()[:80], "service": label,
+        "phone": s["phone"], "phone_display": s["phone_display"], "hours": "", "notes": "",
+        "description": f"Found by searching \"{query}\".", "source_url": s["url"], "source_text": s["context"],
+        "verified": False, "learned": True, "query": query, "learned_at": time.time(),
+    }
+    keywords = [k for k in (plan.get("keywords") or []) if isinstance(k, str)][:8] + [label.lower()]
+    rules.add_service(cid, label, keywords, plan.get("description") or label, col, cell)
+    emit("done", cell=cell)
+    return {"category": cid, "label": label, "cell": cell, "query": query, "answer": out.get("answer")}

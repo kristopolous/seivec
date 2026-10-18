@@ -31,6 +31,7 @@ DEPTS_PATH = DATA / "departments.json"
 LEARNED_DIR = DATA / "learned"          # runtime cache (git-ignored)
 SEED_DIR = DATA / "seed_cities"          # pre-learned cities shipped with the repo
 PHRASES_PATH = DATA / "learned_phrases.json"
+SERVICES_PATH = DATA / "learned_services.json"   # services discovered on calls (e.g. "Library")
 FEEDBACK_PATH = DATA / "feedback.jsonl"
 
 STOPWORDS = set("""
@@ -100,6 +101,12 @@ class Rules:
             for f in sorted(LEARNED_DIR.glob("*.json")):
                 self._load_learned(json.loads(f.read_text()))
             self.learned_phrases = json.loads(PHRASES_PATH.read_text()) if PHRASES_PATH.exists() else {}
+            # Services discovered during calls: new rows with their own keywords and cells.
+            self.services = (json.loads(SERVICES_PATH.read_text()) if SERVICES_PATH.exists()
+                             else {"categories": {}, "cells": {}})
+            for cid, c in self.services["categories"].items():
+                self.categories.setdefault(cid, c)
+                self.label_to_id.setdefault(c["label"].lower(), cid)
             self._build_index()
 
     def _load_learned(self, doc: dict) -> None:
@@ -197,6 +204,9 @@ class Rules:
 
     def lookup(self, category: str, jurisdiction: str) -> dict[str, Any] | None:
         with self._lock:
+            found = self.services["cells"].get(category, {}).get(jurisdiction)
+            if found:
+                return dict(found)
             if jurisdiction in self.learned_cells:
                 cell = self.learned_cells[jurisdiction].get(category)
                 return dict(cell) if cell and cell.get("phone") else None
@@ -214,6 +224,21 @@ class Rules:
             path.write_text(json.dumps(doc, indent=1))
             self._load_learned(doc)
 
+    def add_service(self, cid: str, label: str, keywords: list[str], description: str,
+                    jurisdiction: str, cell: dict[str, Any]) -> None:
+        """A new row in the rules, discovered on a call, with its first cell."""
+        with self._lock:
+            cat = self.services["categories"].get(cid) or {
+                "id": cid, "label": label, "emergency": False, "description": description,
+                "keywords": [], "discovered": True, "discovered_at": time.time()}
+            cat["keywords"] = list(dict.fromkeys(cat["keywords"] + [k.lower() for k in keywords if k]))
+            self.services["categories"][cid] = cat
+            self.services["cells"].setdefault(cid, {})[jurisdiction] = cell
+            SERVICES_PATH.write_text(json.dumps(self.services, indent=1))
+            self.categories[cid] = cat
+            self.label_to_id[label.lower()] = cid
+            self._build_index()
+
     def ensure_jurisdiction(self, key: str, name: str) -> None:
         with self._lock:
             if key not in self.jurisdictions:
@@ -227,15 +252,17 @@ class Rules:
             for cid, c in self.categories.items():
                 cells = {}
                 for j in cols:
-                    if j in self.learned_cells:
+                    cell = self.services["cells"].get(cid, {}).get(j)
+                    if cell is None and j in self.learned_cells:
                         cell = self.learned_cells[j].get(cid)
-                    else:
+                    elif cell is None:
                         cell = self.dept(self.table.get(cid, {}).get(j))
                     if cell:
                         cells[j] = {"department": cell.get("department"), "service": cell.get("service"),
                                     "phone_display": cell.get("phone_display"), "learned": j in self.learned_cells,
                                     "verified": cell.get("verified")}
-                rows.append({"id": cid, "label": c["label"], "emergency": c.get("emergency", False), "cells": cells})
+                rows.append({"id": cid, "label": c["label"], "emergency": c.get("emergency", False),
+                             "discovered": c.get("discovered", False), "cells": cells})
             return {"columns": [{"key": j, **self.jurisdictions[j]} for j in cols], "rows": rows}
 
     # -- feedback ------------------------------------------------------------

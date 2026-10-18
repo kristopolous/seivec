@@ -6,3 +6,4 @@ data/feedback.jsonl
 data/audit.jsonl
 data/learned/
 data/learned_phrases.json
+data/learned_services.json

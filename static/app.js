@@ -240,6 +240,10 @@ function renderCall() {
   renderSign(c);
   renderLanes(c);
   renderS1(c);
+  const speed = $("speed");
+  speed.hidden = !c?.speech_speed || c.speech_speed === "medium";
+  speed.textContent = c?.speech_speed
+    ? `Voice speed: ${c.speech_speed.replace("x-", "extra ")}${c.urgent ? " (urgent)" : ""}` : "";
   renderHandoff(c);
   renderReview(c);
   narrow();
