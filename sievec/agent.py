@@ -202,11 +202,13 @@ def act_on_systemone(call: guava.Call, r: dict) -> None:
     # "I need a human to look at this pothole" names a service: route it, don't escalate.
     top = (r.get("lanes") or [{}])[0]
     clear_service = top.get("id") not in (None, "general") and top.get("score", 0) >= 0.7
-    if r.get("dislikes_ai", 0) >= 0.9:
+    # Talk picked up before Rosa's greeting is someone talking to someone else, not a request for a person.
+    greeted = any(l["role"] == "agent" for l in (bus.get(call.id) or {}).get("transcript", []))
+    if greeted and r.get("dislikes_ai", 0) >= 0.9:
         # The caller doesn't like AI: the fallback is a person at 311, whatever they called about.
         escalate_to_311(call, f"System One: caller dislikes AI {r['dislikes_ai']:.2f}")
         return
-    if r["wants_human"] >= 0.8 and not clear_service:
+    if greeted and r["wants_human"] >= 0.8 and not clear_service:
         # "I need a human to look at this pothole" is a pothole request, not an operator request.
         escalate_to_311(call, f"System One: wants a person {r['wants_human']:.2f}")
         return
