@@ -185,8 +185,9 @@ class Rules:
                                      for cid, c in self.categories.items()}},
             "emergency": {"type": "noul", "instructions": "Is anyone in danger right now (fire, injury, crime in "
                                                           "progress, gas leak, downed power line)?"},
-            "wants_human": {"type": "noul", "instructions": "Is the caller asking to talk to a real person instead "
-                                                            "of an automated assistant?"},
+            "wants_human": {"type": "noul", "instructions": "Does the caller reject talking to an AI or automated "
+                                                            "assistant (including swearing at or about AI), or ask for "
+                                                            "a real person?"},
             "urgency": {"type": "score", "instructions": "How urgent is the caller's problem?",
                         "criteria": ["routine", "soon", "urgent", "life-threatening"]},
             "pace": {"type": "choice", "instructions": "In the caller's LATEST line only: are they asking the "

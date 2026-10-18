@@ -139,8 +139,13 @@ def adjust_speed(call: guava.Call, event: CallerSpeechEvent) -> None:
     bus._update(call.id, "call", speech_speed=new)
 
 
+# Rejecting the AI counts as asking for a person: "fuck AI", "no robots",
+# "I don't want to talk to a machine", "get me a human".
+_BOT = r"(ai|a\.i\.|robots?|bots?|machines?|computers?|automated|this (robot|bot|ai|machine|thing))"
 WANTS_HUMAN = re.compile(
-    r"\b(hate (ai|a\.i\.|robots?|bots?|this (robot|bot|ai|machine|thing))|(talk|speak) to (a |an )?(real |actual |live )?(person|human|someone)|"
+    rf"\b((hate|fuck|f\*+k|screw|damn|forget|no|not) (you,? )?(stupid |damn |fucking )?{_BOT}|"
+    rf"(don'?t|do not) want (an? |to talk to (an? )?)?{_BOT}|"
+    r"(talk|speak) to (a |an )?(real |actual |live )?(person|human|someone)|(want|get me|give me|need) (a |an )?((real|actual|live) (human|person)|human)(?! to)|"
     r"real person|human being|representative|operator|not a (robot|bot|machine)|stop (being )?(a )?robot|"
     r"is this (a |an )?(robot|bot|ai|recording))\b", re.I)
 
@@ -185,7 +190,7 @@ def act_on_systemone(call: guava.Call, r: dict) -> None:
         set_urgent(call, f"System One: danger {r['emergency']:.2f}")
         mark_emergency(call, f"System One: danger probability {r['emergency']:.2f}", warn=True)
         return
-    if r["wants_human"] >= 0.9:
+    if r["wants_human"] >= 0.8:
         escalate_to_311(call, f"System One: wants a person {r['wants_human']:.2f}")
         return
     if r["urgency"] >= 2.0:
