@@ -33,13 +33,20 @@
   </header>
 
   <main class="board">
-    <aside class="calls" aria-label="Calls">
-      <h2 class="col-title">Calls</h2>
-      <ol id="call-list" class="call-list"></ol>
+    <aside class="calls" aria-label="Call log">
+      <div class="log-head">
+        <h2 class="col-title">Call log</h2>
+        <label class="check"><input type="checkbox" id="follow-live" checked> Follow live calls</label>
+      </div>
+      <div class="log" id="call-list" role="listbox" aria-label="Calls" tabindex="0"></div>
       <p class="empty" id="calls-empty">No calls yet. Dial the line, call from the browser, or play a sample call.</p>
     </aside>
 
     <section class="talk" aria-label="Live call">
+      <div class="viewing" id="viewing" hidden>
+        <span id="viewing-text"></span>
+        <button class="btn ghost" id="back-live" type="button">Back to live</button>
+      </div>
       <ol class="pipeline" id="pipeline" aria-label="Routing steps"></ol>
       <div class="alert" id="alert" role="alert" hidden></div>
       <div class="talk-head">

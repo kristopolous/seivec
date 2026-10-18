@@ -51,7 +51,9 @@ function handle(msg) {
     case "system1": {
       const isNew = !state.calls.has(msg.call.id);
       state.calls.set(msg.call.id, msg.call);
-      if (isNew && state.follow) { state.selected = msg.call.id; state.audit = []; renderAudit(); }
+      if ((isNew || isLive(msg.call)) && state.follow && state.selected !== msg.call.id && isLive(msg.call)) {
+        state.selected = msg.call.id; state.audit = []; renderAudit(); renderAll();
+      }
       renderCalls();
       if (msg.call.id === state.selected) renderCall();
       break;
@@ -115,27 +117,99 @@ function chip(html, warn) {
   return s;
 }
 
-// ---------- calls rail ----------
+// ---------- call log ----------
+const BADGES = {
+  listening: ["Live", "live"], routing: ["Live", "live"], transferring: ["Live", "live"],
+  transferred: ["Forwarded", "ok"], handoff: ["Forwarded", "ok"], emergency: ["911", "alarm"],
+  "no-match": ["Outside area", "muted"], ended: ["Hung up", "muted"],
+};
+const dayLabel = (t) => {
+  const d = new Date(t * 1000), now = new Date();
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === now.toDateString()) return "Today";
+  if (d.toDateString() === y.toDateString()) return "Yesterday";
+  return d.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
+};
+function outcomeText(c) {
+  const d = c.decision;
+  if (c.status === "emergency") return "Told to hang up and dial 911";
+  if (d?.cell) return `${d.category.label} → ${d.cell.department}${d.place?.name ? `, ${d.place.name.replace(/ \(.*\)/, "")}` : ""}`;
+  if (isLive(c)) return c.lanes?.[0] ? `Sounds like ${c.lanes[0].label.toLowerCase()}` : "Listening";
+  if (c.status === "no-match") return `Outside the area: ${d?.place?.name || ""}`;
+  const said = (c.transcript || []).find((l) => l.role === "caller");
+  return said ? `“${said.text}”` : "Hung up before saying anything";
+}
+const orderedCalls = () => {
+  const all = [...state.calls.values()].sort((a, b) => b.started_at - a.started_at);
+  return [...all.filter(isLive), ...all.filter((c) => !isLive(c))];
+};
+
+function selectCall(c, { follow } = {}) {
+  state.selected = c.id;
+  state.follow = follow ?? isLive(c);
+  $("follow-live").checked = state.follow;
+  loadAudit(); renderAll(); backfillTranscript(c);
+}
+
 function renderCalls() {
   const list = $("call-list");
-  const calls = [...state.calls.values()].sort((a, b) => b.started_at - a.started_at);
+  const calls = orderedCalls();
   $("calls-empty").hidden = calls.length > 0;
-  list.replaceChildren(...calls.map((c) => {
-    const li = el("li", "call-item");
-    li.tabIndex = 0;
-    li.setAttribute("aria-current", String(c.id === state.selected));
-    const dot = el("span", "dot"); dot.dataset.s = c.status;
-    const who = el("span", "who", c.caller ? fmtPhone(c.caller) : c.channel === "browser" ? "Browser caller" : "Caller");
-    const when = el("span", "when", fmtTime(c.started_at));
-    const cat = c.decision?.category?.label;
-    const what = el("span", "what", [cat, STATUS_WORDS[c.status]].filter(Boolean).join(", ") + (c.simulated ? " (sample)" : ""));
-    li.append(dot, who, when, what);
-    const pick = () => { state.selected = c.id; state.follow = isLive(c); loadAudit(); renderAll(); backfillTranscript(c); };
-    li.onclick = pick;
-    li.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } };
-    return li;
-  }));
+  const nodes = [];
+  let group = null;
+  for (const c of calls) {
+    const g = isLive(c) ? "Live now" : dayLabel(c.started_at);
+    if (g !== group) { group = g; nodes.push(el("div", "log-group" + (g === "Live now" ? " live" : ""), g)); }
+    const row = el("div", "log-row");
+    row.setAttribute("role", "option");
+    row.setAttribute("aria-selected", String(c.id === state.selected));
+    row.dataset.id = c.id;
+    const who = el("span", "log-who", c.caller ? fmtPhone(c.caller) : c.channel === "browser" ? "Browser caller" : "Caller");
+    if (c.simulated) who.append(el("span", "tag", "sample"));
+    const [label, kind] = BADGES[c.status] || ["Ended", "muted"];
+    row.append(
+      el("span", "log-time", new Date(c.started_at * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })),
+      who, el("span", `badge ${kind}`, label), el("span", "log-what", outcomeText(c)),
+    );
+    row.onclick = () => selectCall(c);
+    nodes.push(row);
+  }
+  list.replaceChildren(...nodes);
+  renderViewing();
 }
+
+function renderViewing() {
+  const c = current();
+  const banner = $("viewing");
+  const liveCall = orderedCalls().find(isLive);
+  banner.hidden = !c || isLive(c);
+  if (banner.hidden) return;
+  $("viewing-text").textContent = `Viewing a past call from ${fmtTime(c.started_at)}` + (liveCall ? ". A call is live now." : "");
+  $("back-live").hidden = !liveCall && state.follow;
+  $("back-live").textContent = liveCall ? "Go to live call" : "Follow live calls";
+}
+$("back-live").onclick = () => {
+  const liveCall = orderedCalls().find(isLive);
+  if (liveCall) selectCall(liveCall, { follow: true });
+  else { state.follow = true; $("follow-live").checked = true; renderViewing(); }
+};
+$("follow-live").onchange = (e) => {
+  state.follow = e.target.checked;
+  const liveCall = orderedCalls().find(isLive);
+  if (state.follow && liveCall) selectCall(liveCall, { follow: true });
+  renderViewing();
+};
+$("call-list").addEventListener("keydown", (e) => {
+  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  e.preventDefault();
+  const calls = orderedCalls();
+  const i = calls.findIndex((c) => c.id === state.selected);
+  const next = calls[Math.max(0, Math.min(calls.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))];
+  if (next) {
+    selectCall(next, { follow: false });
+    $("call-list").querySelector(`[data-id="${next.id}"]`)?.scrollIntoView({ block: "nearest" });
+  }
+});
 
 // ---------- call view ----------
 function renderAll() {
@@ -174,6 +248,10 @@ function renderSign(c) {
     return set(k, cell.department, `${cell.service}, ${c.decision.place?.name || ""}`.replace(/, $/, ""), cell.phone_display);
   }
   if (s === "no-match") return set("Outside this line", c.decision?.place?.name || "Not in LA County", "Caller was told who to call", null);
+  if (!isLive(c)) {
+    const said = (c.transcript || []).some((l) => l.role === "caller");
+    return set("Call ended", "Not routed", said ? "The caller hung up before a decision" : "The caller hung up before saying anything", null);
+  }
   if (s === "routing") return set("Deciding", "Checking the table", c.decision?.category?.label || "Matching the request", null);
   const top = c.lanes?.[0];
   return set("Listening", top ? top.label : "What does the caller need?", top ? "Best guess so far" : "Options narrow as the caller talks", null);
@@ -450,7 +528,12 @@ const labelOf = (id) => state.rules.rows.find((r) => r.id === id)?.label || id;
 async function sendFeedback(correct) {
   const c = current();
   if (!c) return;
-  await fetch(`/api/calls/${c.id}/feedback`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ correct }) });
+  const r = await fetch(`/api/calls/${c.id}/feedback`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ correct }) });
+  if (!r.ok) {
+    const msg = $("review-done");
+    msg.hidden = false;
+    msg.textContent = `Couldn't save the review (${r.status}). ${(await r.json().catch(() => ({}))).detail || ""}`;
+  }
 }
 $("review-yes").onclick = () => sendFeedback(current()?.decision?.category?.id);
 $("review").onsubmit = (e) => { e.preventDefault(); sendFeedback($("review-pick").value); };

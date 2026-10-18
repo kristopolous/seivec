@@ -73,7 +73,7 @@ select { border: 1px solid var(--rule); background: var(--panel); border-radius:
 
 /* ---- board ---- */
 .board {
-  display: grid; grid-template-columns: 230px minmax(330px, 0.9fr) minmax(480px, 1.4fr);
+  display: grid; grid-template-columns: 290px minmax(330px, 0.9fr) minmax(460px, 1.35fr);
   min-height: 0; overflow: hidden;
 }
 .board > * { min-height: 0; padding: 16px 20px; }
@@ -83,18 +83,35 @@ select { border: 1px solid var(--rule); background: var(--panel); border-radius:
 .empty { color: var(--muted); font-size: 14px; }
 .empty.small { font-size: 13px; margin: 4px 0; }
 
-/* calls rail */
-.calls { overflow-y: auto; }
-.call-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
-.call-item {
-  display: grid; grid-template-columns: 12px 1fr; gap: 2px 10px; align-items: center;
-  padding: 9px 10px; border-radius: 6px; cursor: pointer; border: 1px solid transparent;
+/* call log */
+.calls { overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-left: 0 !important; padding-right: 0 !important; }
+.log-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 0 16px; flex-wrap: wrap; }
+.log { display: flex; flex-direction: column; outline: none; }
+.log-group { font-size: 12px; font-weight: 800; color: var(--muted); padding: 10px 16px 4px; border-bottom: 1px solid var(--rule); }
+.log-group.live { color: var(--red); }
+.log-row {
+  display: grid; grid-template-columns: 52px 1fr auto; gap: 1px 8px; align-items: baseline;
+  padding: 8px 12px 8px 12px; border-bottom: 1px solid var(--rule); border-left: 4px solid transparent;
+  cursor: pointer; font-size: 13px;
 }
-.call-item:hover { border-color: var(--rule); }
-.call-item[aria-current="true"] { background: var(--panel); border-color: var(--rule); }
-.call-item .who { font-weight: 600; font-size: 14px; }
-.call-item .when { grid-column: 2; color: var(--muted); font-size: 12px; }
-.call-item .what { grid-column: 2; color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log-row:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.log-row[aria-selected="true"] { background: var(--panel); border-left-color: var(--sign); }
+.log-row[aria-selected="true"] .log-who { color: var(--sign); }
+.log:focus-visible .log-row[aria-selected="true"] { outline: 2px solid var(--amber); outline-offset: -2px; }
+.log-time { color: var(--muted); font-size: 12px; }
+.log-who { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log-what { grid-column: 2 / 4; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.badge { font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 4px; white-space: nowrap; }
+.badge.live { background: var(--red); color: #fff; animation: pulse 1.2s ease-in-out infinite; }
+.badge.ok { background: color-mix(in srgb, var(--sign) 22%, transparent); color: var(--sign); }
+.badge.alarm { background: var(--red); color: #fff; }
+.badge.muted { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--muted); }
+.tag { font-size: 11px; color: var(--muted); border: 1px solid var(--rule); border-radius: 4px; padding: 0 5px; margin-left: 6px; font-weight: 400; }
+.viewing {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px;
+  border-radius: 6px; background: color-mix(in srgb, var(--city) 14%, var(--panel)); font-size: 14px;
+}
+.viewing[hidden] { display: none; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--amber); }
 .dot[data-s="transferred"], .dot[data-s="handoff"] { background: var(--sign); }
 .dot[data-s="emergency"] { background: var(--red); }
@@ -103,7 +120,7 @@ select { border: 1px solid var(--rule); background: var(--panel); border-radius:
 @keyframes pulse { 50% { opacity: .35; } }
 
 /* talk column */
-.talk { display: grid; grid-template-rows: auto auto auto auto 1fr auto; gap: 12px; overflow: hidden; }
+.talk { display: grid; grid-template-rows: auto auto auto auto auto 1fr auto; gap: 12px; overflow: hidden; }
 .talk-head { display: flex; align-items: center; gap: 12px; }
 .s1 { font-size: 13px; color: var(--muted); }
 .s1 b { color: var(--ink); font-weight: 600; }
@@ -167,8 +184,8 @@ select { border: 1px solid var(--rule); background: var(--panel); border-radius:
 .lanes { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .lane { display: grid; grid-template-columns: 1fr 44px; gap: 10px; align-items: center; font-size: 14px; }
 .lane-bar { position: relative; height: 30px; border-radius: 4px; background: var(--panel); overflow: hidden; border: 1px solid var(--rule); }
-.lane-fill { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--sign) 22%, transparent); transition: width .35s ease; }
-.lane:first-child .lane-fill { background: color-mix(in srgb, var(--sign) 40%, transparent); }
+.lane-fill { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--amber) 22%, transparent); transition: width .35s ease; }
+.lane:first-child .lane-fill { background: color-mix(in srgb, var(--amber) 42%, transparent); }
 .lane.emergency .lane-fill { background: color-mix(in srgb, var(--red) 45%, transparent); }
 .lane-name { position: relative; line-height: 30px; padding: 0 10px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lane-pct { text-align: right; color: var(--muted); font-size: 13px; }
@@ -217,12 +234,12 @@ select { border: 1px solid var(--rule); background: var(--panel); border-radius:
 @keyframes fresh { from { background: color-mix(in srgb, var(--learned) 30%, var(--panel)); } }
 
 /* handoff briefing */
-.handoff { border: 2px solid var(--sign); border-radius: 10px; padding: 14px 16px; background: var(--panel); }
+.handoff { border: 1px solid var(--rule); border-left: 3px solid var(--muted); border-radius: 8px; padding: 12px 16px; background: color-mix(in srgb, var(--ink) 3%, var(--bg)); }
 .handoff-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .handoff-head .sub-title { margin: 0; }
 .handoff-actions { display: flex; gap: 6px; }
-.handoff-to { margin: 8px 0 6px; font-weight: 600; }
-.handoff-script { margin: 0; font-size: 16px; line-height: 1.5; font-style: italic; max-width: 70ch; }
+.handoff-to { margin: 8px 0 6px; font-weight: 600; color: var(--muted); }
+.handoff-script { margin: 0; font-size: 15px; line-height: 1.5; font-style: italic; max-width: 70ch; color: var(--ink); opacity: .85; }
 .handoff-facts { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 10px 0 0; font-size: 13px; }
 .handoff-facts dt { color: var(--muted); }
 .handoff-facts dd { margin: 0; }

@@ -23,6 +23,11 @@ from .sim import SCENARIOS, run_scenario
 STATIC = Path(__file__).resolve().parent.parent / "static"
 
 
+class Feedback(BaseModel):
+    """Operator review of a routed call: the service it should have been."""
+    correct: str
+
+
 def stats() -> dict:
     calls = bus.snapshot()["calls"]
     routed = Counter(
@@ -166,9 +171,6 @@ def create_app() -> FastAPI:
     async def audit_verify():
         return audit.verify()
 
-    class Feedback(BaseModel):
-        correct: str
-
     @app.post("/api/calls/{call_id}/feedback")
     async def feedback(call_id: str, body: Feedback):
         call = bus.get(call_id)
@@ -178,9 +180,13 @@ def create_app() -> FastAPI:
             raise HTTPException(400, "Unknown service")
         predicted = call["decision"]["category"]["id"]
         caller_lines = [l["text"] for l in call["transcript"] if l["role"] == "caller"]
+        # Teach the sentence that best describes the correct service, not just the first one.
+        def fit(line: str) -> float:
+            return next((x["raw"] for x in rules.rank(line, limit=40) if x["id"] == body.correct), 0.0)
+        phrase = max(caller_lines, key=lambda l: (fit(l), len(l))) if caller_lines else ""
         result = rules.record_feedback({
             "call_id": call_id,
-            "phrase": caller_lines[0] if caller_lines and body.correct != predicted else "",
+            "phrase": phrase if body.correct != predicted else "",
             "location": call["fields"].get("location", ""),
             "predicted": predicted,
             "correct": body.correct,
