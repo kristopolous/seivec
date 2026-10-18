@@ -52,9 +52,9 @@ h2, h3 { margin: 0; }
   border-bottom: 1px solid var(--rule); background: var(--panel); flex-wrap: wrap;
 }
 .brand { display: flex; align-items: center; gap: 12px; }
-.brand-logo { height: 40px; width: auto; image-rendering: pixelated; }
-.brand-name { font-weight: 800; font-size: 26px; letter-spacing: -0.01em; color: var(--sign); }
-.brand-sub { color: var(--muted); font-size: 14px; }
+.brand-logo { height: 46px; width: auto; image-rendering: pixelated; }
+.brand-name { font-weight: 800; font-size: 30px; letter-spacing: -0.01em; color: var(--sign); }
+.brand-sub { color: var(--ink); font-size: 20px; font-weight: 600; font-style: italic; letter-spacing: -0.005em; }
 .line-info { display: flex; gap: 10px; flex-wrap: wrap; margin-left: auto; font-size: 13px; }
 .chip { padding: 3px 10px; border-radius: 999px; border: 1px solid var(--rule); white-space: nowrap; }
 .chip.warn { border-color: var(--amber); }
