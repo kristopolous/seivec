@@ -197,7 +197,7 @@ function renderCalls() {
     const hit = searchHit(c, q);
     if (q && hit.line) {
       const what = row.querySelector(".log-what");
-      what.replaceChildren(`${hit.line.role === "caller" ? "Caller" : "Rosa"}: `, highlighted(hit.line.text, q));
+      what.replaceChildren(`${hit.line.role === "caller" ? "Caller" : hit.line.role === "system" ? "Sievec" : "Rosa"}: `, highlighted(hit.line.text, q));
     }
     row.onclick = () => selectCall(c);
     nodes.push(row);
@@ -344,8 +344,8 @@ function renderTranscript() {
     return;
   }
   list.replaceChildren(...lines.map((l) => {
-    const li = el("li", `line ${l.role}${l.partial ? " partial" : ""}`);
-    li.append(el("span", "who", l.role === "caller" ? "Caller" : "Rosa"), el("span", "text", l.text));
+    const li = el("li", `line ${l.role}${l.partial ? " partial" : ""}${l.kind ? " k-" + l.kind : ""}`);
+    li.append(el("span", "who", l.role === "caller" ? "Caller" : l.role === "system" ? "Sievec" : "Rosa"), el("span", "text", l.text));
     return li;
   }));
   if (atBottom || lines.length < 4) list.scrollTop = list.scrollHeight;

@@ -112,6 +112,7 @@ def set_urgent(call: guava.Call, why: str) -> None:
     call.set_persona(speech_speed="fast")
     call.send_instruction("This is urgent for the caller. Keep every sentence short and get to the point.")
     bus.note(call.id, "voice.urgent", {"why": why, "speech_speed": "fast"})
+    bus.annotate(call.id, f"Urgent ({why}): Rosa switched to fast, short sentences.", "urgent")
     bus._update(call.id, "call", speech_speed="fast", urgent=why)
 
 
@@ -129,6 +130,7 @@ def adjust_speed(call: guava.Call, event: CallerSpeechEvent) -> None:
     call.set_variable("speed_by_caller", True)
     call.set_persona(speech_speed=new)
     bus.note(call.id, "voice.speed", {"from": current, "to": new, "caller_said": event.utterance})
+    bus.annotate(call.id, f"Voice speed {current} → {new}: caller said \"{event.utterance.strip()}\"", "speed")
     bus._update(call.id, "call", speech_speed=new)
 
 
@@ -139,6 +141,7 @@ def mark_emergency(call: guava.Call, why: str, warn: bool) -> None:
         return
     call.set_variable("emergency", why)
     bus.alert(call.id, f"Emergency: {why}. Caller told to hang up and dial 911.")
+    bus.annotate(call.id, f"Emergency flagged ({why}). Logged as a 911 call.", "emergency")
     bus.step(call.id, "rule", "done", "Emergency", f"Danger detected: {why}")
     bus.step(call.id, "connect", "done", "Dial 911", "Never transferred")
     bus.status(call.id, "emergency")

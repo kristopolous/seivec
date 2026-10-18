@@ -145,7 +145,14 @@ select { border: 1px solid var(--rule); background: var(--panel); border-radius:
 .line.caller .text { font-weight: 600; }
 .line.partial .text::after { content: ""; display: inline-block; width: 2px; height: 1.05em; background: var(--ink); margin-left: 3px; vertical-align: -2px; animation: blink 1s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
-.line.system { align-self: stretch; max-width: none; font-size: 13px; color: var(--muted); border-left: 3px solid var(--learned); padding-left: 10px; }
+.line.system { align-self: stretch; max-width: none; border-left: 3px solid var(--learned); padding: 4px 0 4px 10px;
+  background: color-mix(in srgb, var(--learned) 7%, transparent); border-radius: 0 4px 4px 0; }
+.line.system .who { color: var(--learned); }
+.line.system .text { font-size: 13.5px; color: var(--ink); font-weight: 400; }
+.line.system.k-emergency { border-left-color: var(--red); background: color-mix(in srgb, var(--red) 9%, transparent); }
+.line.system.k-emergency .who { color: var(--red); }
+.line.system.k-urgent, .line.system.k-speed { border-left-color: var(--amber); background: color-mix(in srgb, var(--amber) 9%, transparent); }
+.line.system.k-urgent .who, .line.system.k-speed .who { color: var(--amber); }
 
 /* ---- route column ---- */
 .route { overflow-y: auto; display: flex; flex-direction: column; gap: 18px; }

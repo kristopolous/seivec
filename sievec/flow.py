@@ -135,10 +135,13 @@ def _decide(call_id, service_value, location, transcript, guess, say) -> Outcome
         if ev["state"] == "searching":
             say("Tell the caller you're checking which city handles that address. It'll take a few seconds.")
             bus.step(call_id, "place", "active", location, "Not in the cache. Searching the web.")
+            bus.annotate(call_id, f"\"{location}\" isn't in the place cache: searching the web for its jurisdiction.", "search")
         elif ev["state"] == "reading":
             bus.step(call_id, "place", "active", location, f"Reading {len(ev['sources'])} sources with System 2")
 
     place = places.resolve(location, guess, on_progress=place_progress)
+    if place.get("method") == "web search":
+        bus.annotate(call_id, f"Web search placed it in {place['name']}.", "search")
     bus.step(call_id, "place", "done", place["name"], place["method"], data=place)
 
     # 2. Service category
@@ -160,6 +163,8 @@ def _decide(call_id, service_value, location, transcript, guess, say) -> Outcome
         found = learn.discover(f"{service_value}. {caller_text}", place["key"], place["name"], discover_progress)
         bus.broadcast({"type": "rules", "rules": rules.public_table()})
         if found and found.get("cell"):
+            bus.annotate(call_id, f"Searched \"{found['query']}\" → {found['cell']['department']}, "
+                                  f"{found['cell']['phone_display']}. Added \"{found['label']}\" to the rules.", "learned")
             cat = {"id": found["category"], "label": found["label"], "lanes": cat["lanes"],
                    "method": f'web search "{found["query"]}", added to the rules'}
             discovered_cell = found["cell"]
@@ -203,6 +208,8 @@ def _decide(call_id, service_value, location, transcript, guess, say) -> Outcome
         bus.broadcast({"type": "rules", "rules": rules.public_table()})
         cell = learn.learn_service(key, city, cat["id"], learn_progress)
         bus.broadcast({"type": "rules", "rules": rules.public_table()})
+        bus.annotate(call_id, (f"Searched \"{query}\" → {cell['department']}, {cell['phone_display']}. Saved to the rules."
+                               if cell else f"Searched \"{query}\": no clear number found."), "learned" if cell else "search")
         # Fill the rest of this city's column in the background (for the board).
         if not (rules.jurisdictions.get(key) or {}).get("complete"):
             learn.learn_in_background(key, city, learn_progress, call_id)
@@ -265,6 +272,9 @@ def answer_question(call_id: str, question: str) -> str:
                 f"That's {cell['department']}, {cell['phone_display']}. I can connect you if you'd like.")
         else:
             reply = answer or "I couldn't find that, but I can connect you with the office that handles it."
+        bus.annotate(call_id, f"Question looked up on the web"
+                              + (f" (\"{found['query']}\")" if found and found.get("query") else "")
+                              + f": {reply}", "answer")
         bus.note(call_id, "question.answered", {"question": question, "answer": reply,
                                                 "query": (found or {}).get("query"),
                                                 "source_url": (cell or {}).get("source_url")})

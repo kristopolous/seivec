@@ -73,6 +73,17 @@ class Bus:
         """Audit an event that isn't a state change (handoff briefing, feedback, ...)."""
         self._audit(call_id, event, payload)
 
+    def annotate(self, call_id: str, text: str, kind: str = "info") -> None:
+        """A note in the transcript, at the moment Sievec did something."""
+        with self._lock:
+            call = self.calls.get(call_id)
+            if call is None:
+                return
+            call["transcript"].append({"role": "system", "uid": None, "text": text, "t": time.time(),
+                                       "partial": False, "interrupted": False, "kind": kind})
+            transcript = json.loads(json.dumps(call["transcript"]))
+        self._emit({"type": "transcript", "call_id": call_id, "transcript": transcript})
+
     def _update(self, call_id: str, kind: str, **changes: Any) -> None:
         with self._lock:
             call = self.calls.get(call_id)
