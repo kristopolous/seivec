@@ -85,7 +85,7 @@ number "in case you need it". Sievec doesn't need any of it to route a call, so 
   our own logs aren't implemented yet.
 
 Demo: pick any incident and location and set the caller to **"Caller overshares SSN, birthday, card"**, or play
-the `pii_rent` sample (it's second in the demo reel).
+the `pii_rent` sample (it opens the demo reel).
 
 ## Run it
 

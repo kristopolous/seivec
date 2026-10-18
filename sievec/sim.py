@@ -254,10 +254,10 @@ LOCATIONS = {
 
 
 STYLES = {
+    "overshare": "Caller overshares SSN, birthday, card",
     "normal": "Caller: normal",
     "slow": "Caller asks Rosa to slow down",
     "hurry": "Caller is in a hurry",
-    "overshare": "Caller overshares SSN, birthday, card",
 }
 
 
@@ -285,7 +285,7 @@ def build_scenario(incident: str, location: str, style: str = "normal") -> dict:
 # The demo reel: a spread of calls back to back.
 # A breadth tour: different services, jurisdictions, and behaviors (voice
 # speed, urgency, emergency, live web search, a brand-new service).
-REEL = ["slow_down", "pii_rent", "la_graffiti", "lb_tree", "la_roaches", "county_coyote", "glendora_pothole", "pas_car",
+REEL = ["pii_rent", "slow_down", "la_graffiti", "lb_tree", "la_roaches", "county_coyote", "glendora_pothole", "pas_car",
         "hurry_up", "la_ticket", "ing_breakin", "compton_couch", "la_rent", "weho_build", "gas",
         "la_food", "sd_library", "lb_barking", "downey_dumping"]
 
