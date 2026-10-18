@@ -185,9 +185,16 @@ class Rules:
                                      for cid, c in self.categories.items()}},
             "emergency": {"type": "noul", "instructions": "Is anyone in danger right now (fire, injury, crime in "
                                                           "progress, gas leak, downed power line)?"},
-            "wants_human": {"type": "noul", "instructions": "Does the caller reject talking to an AI or automated "
-                                                            "assistant (including swearing at or about AI), or ask for "
-                                                            "a real person?"},
+            "wants_human": {"type": "noul", "instructions": "Is the caller asking to talk to a real person instead "
+                                                            "of an automated assistant?"},
+            "dislikes_ai": {"type": "noul",
+                            "instructions": "Does the caller say something negative about AI, robots, or automated "
+                                            "assistants?",
+                            "criteria": {
+                                "true": "The caller insults, swears at, or says they hate or refuse AI, robots, bots "
+                                        "or automated systems",
+                                "false": "The caller describes a problem, asks a question, asks for a crew or worker, "
+                                         "or asks the assistant to talk slower or faster; nothing negative about AI"}},
             "urgency": {"type": "score", "instructions": "How urgent is the caller's problem?",
                         "criteria": ["routine", "soon", "urgent", "life-threatening"]},
             "pace": {"type": "choice", "instructions": "In the caller's LATEST line only: are they asking the "
@@ -212,6 +219,7 @@ class Rules:
             "id": a["service"]["choice"], "label": self.categories.get(a["service"]["choice"], {}).get("label"),
             "confidence": round(a["service"]["confidence"], 3), "lanes": lanes,
             "emergency": round(a["emergency"]["noul"], 3), "wants_human": round(a["wants_human"]["noul"], 3),
+            "dislikes_ai": round(a["dislikes_ai"]["noul"], 3),
             "urgency": round(a["urgency"]["score"], 2), "pace": a["pace"]["choice"],
             "pace_p": round(max(a["pace"]["probabilities"].values()), 3),
             "latency_ms": int((time.time() - started) * 1000), "latest": latest,

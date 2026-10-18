@@ -309,7 +309,7 @@ function renderS1(c) {
   s.hidden = false;
   const pct = (x) => `${Math.round(x * 100)}%`;
   const bits = [
-    `danger ${pct(r.emergency ?? 0)}`, `wants a person ${pct(r.wants_human ?? 0)}`,
+    `danger ${pct(r.emergency ?? 0)}`, `wants a person ${pct(r.wants_human ?? 0)}`, `dislikes AI ${pct(r.dislikes_ai ?? 0)}`,
     `urgency ${(r.urgency ?? 0).toFixed(1)}/3`, r.pace && r.pace !== "none" ? `pace: ${r.pace}` : null,
   ].filter(Boolean).join(", ");
   s.replaceChildren(`System One (${state.config.llm?.system1_model || "nimble"}, ${r.latency_ms} ms): `,

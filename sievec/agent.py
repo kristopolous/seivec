@@ -97,9 +97,9 @@ def search_service(call: guava.Call, query: str):
 SPEEDS = ["x-slow", "slow", "medium", "fast", "x-fast"]
 # "too fast"/"too slow" only count when aimed at Rosa: "cars are going too fast" is a traffic report.
 SLOWER = re.compile(r"\b(slow (it )?down(?! (the|those|these|cars|traffic|drivers|people))|(talk|speak)(ing)? (more )?slow(er|ly)|"
-                    r"you('?re| are)? (talking |speaking |going )?too fast|"
+                    r"(you('?re| are)?|it'?s) (talking |speaking |going )?(way |so |really |much |a bit |kind of )?too fast|"
                     r"more slowly|slower,? please)\b", re.I)
-FASTER = re.compile(r"\b(hurry( it)? up|speed (it )?up|(talk|speak) faster|you('?re| are)? (talking |speaking |going |being )?too slow|"
+FASTER = re.compile(r"\b(hurry( it)? up|speed (it )?up|(talk|speak) faster|(you('?re| are)?|it'?s) (talking |speaking |going |being )?(way |so |really |much |a bit |kind of )?too slow|"
                     r"faster,? please|pick up the pace)\b", re.I)
 
 
@@ -122,7 +122,8 @@ def set_urgent(call: guava.Call, why: str) -> None:
 
 def adjust_speed(call: guava.Call, event: CallerSpeechEvent) -> None:
     """"Slow down" / "hurry up": one step on Guava's speech_speed scale per request."""
-    step = -1 if SLOWER.search(event.utterance) else 1 if FASTER.search(event.utterance) else 0
+    # Slowing down jumps two notches so it's clearly audible; speeding up is one.
+    step = -2 if SLOWER.search(event.utterance) else 1 if FASTER.search(event.utterance) else 0
     if not step or call.get_variable("speed_uid") == event.utterance_id:
         return  # partial transcripts repeat the same utterance; act once
     call.set_variable("speed_uid", event.utterance_id)
@@ -190,7 +191,16 @@ def act_on_systemone(call: guava.Call, r: dict) -> None:
         set_urgent(call, f"System One: danger {r['emergency']:.2f}")
         mark_emergency(call, f"System One: danger probability {r['emergency']:.2f}", warn=True)
         return
-    if r["wants_human"] >= 0.8:
+    # A clear service means the caller actually named one ("pothole"), judged
+    # from their words; System One's service guess for "fuck AI" is noise.
+    kw = rules.rank(caller_text(call.id))
+    clear_service = bool(kw) and kw[0]["id"] != "general" and kw[0]["raw"] >= 2.0
+    if r.get("dislikes_ai", 0) >= 0.9:
+        # The caller doesn't like AI: the fallback is a person at 311, whatever they called about.
+        escalate_to_311(call, f"System One: caller dislikes AI {r['dislikes_ai']:.2f}")
+        return
+    if r["wants_human"] >= 0.8 and not clear_service:
+        # "I need a human to look at this pothole" is a pothole request, not an operator request.
         escalate_to_311(call, f"System One: wants a person {r['wants_human']:.2f}")
         return
     if r["urgency"] >= 2.0:
@@ -200,7 +210,7 @@ def act_on_systemone(call: guava.Call, r: dict) -> None:
             and call.get_variable("pace_line") != latest
             and time.time() - (call.get_variable("pace_rule_at") or 0) > 6):  # the phrase rule just did it
         call.set_variable("pace_line", latest)
-        step = -1 if r["pace"] == "slower" else 1
+        step = -2 if r["pace"] == "slower" else 1
         current = call.get_variable("speech_speed") or "medium"
         new = SPEEDS[max(0, min(len(SPEEDS) - 1, SPEEDS.index(current) + step))]
         if new != current:

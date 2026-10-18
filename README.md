@@ -11,7 +11,7 @@ One phone number for every non-emergency city and county service. You call and s
 | Piece | What it does in Sievec |
 | - | - |
 | **[Guava](https://goguava.ai)** (Python SDK) | The whole voice layer: phone and browser (WebRTC) lines, speech recognition, turn-taking, the intake task, a searchable multiple-choice field that confirms the service with the caller, `on_question`, `on_escalate`, `set_persona(speech_speed=…)` for voice speed, pronunciations, transfers, and the per-call transcript and recording API. |
-| **Ollama System One**, model `nimble` ([`POST /v1/systemone`](https://docs.ollama.com/api/systemone)) | The fast decision model. One call per caller utterance (about 1 s) asks typed questions about everything said so far and gets probabilities back: **service** (a `choice` over every service in the rules), **emergency** (`noul`), **wants a real person** (`noul`), **urgency** (`score` 0–3) and **pace** (`choice`: slower / faster / none, judged on the latest line only). The service probabilities drive the live "what the caller is asking for" bars; the other answers trigger actions (below). |
+| **Ollama System One**, model `nimble` ([`POST /v1/systemone`](https://docs.ollama.com/api/systemone)) | The fast decision model. One call per caller utterance (about 1 s) asks typed questions about everything said so far and gets probabilities back: **service** (a `choice` over every service in the rules), **emergency** (`noul`), **wants a real person** (`noul`), **dislikes AI** (`noul`), **urgency** (`score` 0–3) and **pace** (`choice`: slower / faster / none, judged on the latest line only). The service probabilities drive the live "what the caller is asking for" bars; the other answers trigger actions (below). |
 | **`qwen3.8`** via Ollama `/api/chat` | The slow "System 2" model. Used only when reading the web: placing an unknown location, writing the search for a service the rules don't have, picking the right number out of a page's phone list, and answering callers' questions from page text. |
 | **[Parallel](https://parallel.ai)** search + extract | Web search for places, cities and services that aren't in the rules yet, and full-page text when the search excerpts don't include a phone number. |
 
@@ -37,7 +37,8 @@ The routing is a **decision table**, not an LLM judgment. Fast rules decide firs
 | Signal | Phrase rule | System One | Action |
 | - | - | - | - |
 | Emergency | "on fire", "smell gas", "someone is hurt", … | `emergency` ≥ 0.85 | Tell the caller to hang up and dial 911; logged as a 911 call |
-| Wants a person | "I hate AI", "real person", "operator", … | `wants_human` ≥ 0.9 | Forward to 311 for their place (Guava `on_escalate` too) |
+| Doesn't like AI | "fuck AI", "no robots", "I hate AI", … | `dislikes_ai` ≥ 0.9 | Forward to 311 for their place |
+| Wants a person | "real person", "operator", "get me a human", … | `wants_human` ≥ 0.8, unless they named a service | Forward to 311 (Guava `on_escalate` too) |
 | Urgent | "right now", "flooding", "blocking traffic", … | `urgency` ≥ 2 of 3 | Faster voice, shorter sentences |
 | Pace | "slow down", "talk faster", … | `pace` = slower/faster ≥ 0.8 | Step Guava's `speech_speed` (x-slow … x-fast) |
 
