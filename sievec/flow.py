@@ -169,27 +169,27 @@ def _decide(call_id, service_value, location, transcript, guess, say) -> Outcome
             f"Explain that this line covers Los Angeles County, and {place['name']} is outside it. "
             "Suggest calling their own city hall, then say goodbye."))
 
-    # 3. Rule lookup (learning the cell first if this is a new city)
+    # 3. Rule lookup. A missing cell is filled by searching
+    #    "<place> <service> phone number" and stored in the rules.
     key = place["key"]
     cell = rules.lookup(cat["id"], key)
     if cell is None and place["kind"] == "other_city":
         city = place["name"].replace("City of ", "")
+        query = learn.search_query(city, cat["id"])
         bus.step(call_id, "rule", "active", f"{category['label']} × {place['name']}",
-                 "Not in the table yet. Learning it from the web.")
-        say(f"Tell the caller you're looking up the right {city} office. Just a moment.")
+                 f'Not in the rules yet. Searching "{query}"')
+        say(f"Tell the caller you're looking up the right {city} office for that. Just a moment.")
         rules.ensure_jurisdiction(key, place["name"])
         bus.broadcast({"type": "rules", "rules": rules.public_table()})
-        filled = learn.learn_city(key, city, cat["id"], learn_progress)
-        cell = filled.get(cat["id"])
-        bus.broadcast({"type": "rules", "rules": rules.public_table()})
-    if cell is None and place["kind"] == "other_city":
-        # The city's directory didn't list this service: search for it specifically.
-        city = place["name"].replace("City of ", "")
-        bus.step(call_id, "rule", "active", f"{category['label']} × {place['name']}",
-                 f"No {category['label'].lower()} line on file for {city}. Searching for it.")
-        say(f"Tell the caller you're finding the right {city} office for that. Just a moment.")
         cell = learn.learn_service(key, city, cat["id"], learn_progress)
         bus.broadcast({"type": "rules", "rules": rules.public_table()})
+        # Fill the rest of this city's column in the background (for the board).
+        if not (rules.jurisdictions.get(key) or {}).get("complete"):
+            learn.learn_in_background(key, city, learn_progress, call_id)
+        if cell is None and rules.lookup("general", key) is None:
+            bus.step(call_id, "rule", "active", f"{category['label']} × {place['name']}",
+                     f'Nothing found. Searching "{learn.search_query(city, "general")}"')
+            learn.learn_service(key, city, "general", learn_progress)
     fallback = False
     if cell is None and place["kind"] == "other_city":
         cell, fallback = rules.lookup("general", key), True

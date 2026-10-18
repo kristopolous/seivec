@@ -280,8 +280,8 @@ function ghostNode(colKey, ev) {
   t.dataset.row = ev.category;
   t.dataset.col = colKey;
   t.dataset.ghost = "1";
-  const words = { queued: "Queued", searching: "Searching the web", reading: "Reading city pages" }[ev.state] || "";
-  t.append(el("span", "svc", ev.label), el("span", "dep", words), el("span", "ph", ev.city));
+  const words = { queued: "Queued", searching: "Searching the web", reading: "Reading results" }[ev.state] || "";
+  t.append(el("span", "svc", ev.label), el("span", "dep", words), el("span", "ph", ev.query ? `"${ev.query}"` : ev.city));
   return t;
 }
 

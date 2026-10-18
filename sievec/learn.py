@@ -167,6 +167,9 @@ def learn_city(key: str, city: str, focus: str | None, progress: Progress) -> di
                 "source_url": s["url"], "source_text": s["context"], "verified": False, "learned": True,
             }
             filled[cid] = cell
+        # Targeted "<place> <service> phone number" results win over the directory crawl.
+        existing = rules.learned_cells.get(key, {})
+        filled = {cid: c for cid, c in filled.items() if cid not in existing}
         rules.save_learned_cells(key, f"City of {city}", filled, complete=True)
         for c in cats:
             if c["id"] in filled:
@@ -176,25 +179,59 @@ def learn_city(key: str, city: str, focus: str | None, progress: Progress) -> di
         return filled
 
 
+# What a resident would type into a search box for each service.
+SEARCH_TERMS = {
+    "dead_animal": "dead animal pickup", "live_animal": "animal control", "barking_dog": "barking dog complaint",
+    "bulky_item": "bulky item pickup", "missed_trash": "missed trash pickup", "illegal_dumping": "illegal dumping",
+    "pothole": "pothole repair", "sidewalk": "sidewalk repair", "tree": "street tree trimming",
+    "traffic_signal": "traffic signal repair", "streetlight": "streetlight repair", "sewer_flooding": "sewer storm drain",
+    "graffiti": "graffiti removal", "abandoned_vehicle": "abandoned vehicle", "parking": "parking enforcement",
+    "parking_ticket": "parking citation", "noise": "noise complaint", "police_report": "police non-emergency",
+    "homeless": "homeless outreach", "renter": "tenant landlord help", "code_violation": "code enforcement",
+    "power_water": "water utility", "restaurant": "restaurant health complaint", "food_illness": "food poisoning report",
+    "mosquitoes": "vector control mosquitoes", "freeway": "caltrans", "fire_hazard": "fire department non-emergency",
+    "social_services": "social services", "general": "city hall",
+}
+
+
+def search_query(city: str, category: str) -> str:
+    """"<place> <service> phone number", e.g. "Glendora bulky item pickup phone number"."""
+    term = SEARCH_TERMS.get(category) or rules.categories[category]["label"].lower()
+    return f"{city} {term} phone number"
+
+
 def learn_service(key: str, city: str, category: str, progress: Progress) -> dict | None:
-    """A targeted search for one service in a city whose column lacks it,
-    e.g. Culver City bulky item pickup. Runs during the call."""
+    """Search "<place> <service> phone number", read the number, store the cell.
+
+    The number comes from the search excerpts when they have one; otherwise
+    from the top pages' full text. Either way it's copied, not generated."""
     cat = rules.categories[category]
     label = cat["label"].lower()
+    query = search_query(city, category)
     emit = lambda state, **kw: progress({"key": key, "city": city, "category": category,  # noqa: E731
-                                        "label": cat["label"], "state": state, **kw})
+                                        "label": cat["label"], "state": state, "query": query, **kw})
     emit("searching")
+    rules.ensure_jurisdiction(key, f"City of {city}")
     results = websearch.search(
-        f"Official City of {city}, California phone number for {label} ({cat['description']}).",
-        [f"City of {city} CA {label} phone number", f"{city} CA {cat['keywords'][0]}"],
-        max_results=5, purpose=f"learn {city}: {cat['label']}",
+        f"The official City of {city}, California phone number a resident calls for {label}.",
+        [query, f"City of {city} CA {SEARCH_TERMS.get(category, label)} contact"],
+        max_results=5, purpose=f'search "{query}"',
     )
+    # Only trust results about this city: its own site, or pages that name it.
+    # (A search for Glendora happily returns Glendale pages.)
+    slug_ = re.sub(r"[^a-z]", "", city.lower())
+    results = [r for r in results
+               if slug_ in re.sub(r"[^a-z]", "", urlparse(r["url"] or "").netloc.lower())
+               or re.search(rf"\b{re.escape(city)}\b", f"{r.get('title') or ''} {r['text']}", re.I)]
     urls = _official_first(results, city)[:3]
     emit("reading", sources=urls)
-    snips = _snippets(websearch.extract(urls, f"Phone number for {label} in City of {city}",
-                                        purpose=f"learn {city}: read {cat['label']} pages"))
+    excerpt_pages = [{"url": r["url"], "content": r["text"]} for r in results if r["url"] in urls]
+    snips = _snippets(excerpt_pages)
     if not snips:
-        emit("failed", reason="no phone numbers on the pages")
+        snips = _snippets(websearch.extract(urls, f"Phone number for {label} in City of {city}",
+                                            purpose=f"read pages for {city} {label}"))
+    if not snips:
+        emit("failed", reason="no phone numbers in the results")
         return None
     listing = "\n".join(f"[{i}] {s['phone_display']}: {s['label']}" for i, s in enumerate(snips))
     schema = {"type": "object", "properties": {
@@ -205,7 +242,8 @@ def learn_service(key: str, city: str, category: str, progress: Progress) -> dic
         out, _ = complete_json(
             f"Phone numbers from official City of {city} pages, each with its label:\n{listing}\n\n"
             f"Which one should a resident call for: {cat['label']} ({cat['description']})? Answer -1 unless the "
-            f"number's own label clearly fits. Don't pick a general city hall line.",
+            f"number's own label clearly fits."
+            + ("" if category == "general" else " Don't pick a general city hall line."),
             schema, system=2, purpose=f"learn {city}: pick {cat['label']} number",
         )
     except Exception as exc:  # noqa: BLE001
@@ -223,6 +261,7 @@ def learn_service(key: str, city: str, category: str, progress: Progress) -> dic
         "hours": "", "notes": (out.get("note") or "")[:160],
         "description": f"Learned from {urlparse(s['url']).netloc}.",
         "source_url": s["url"], "source_text": s["context"], "verified": False, "learned": True,
+        "query": query, "learned_at": time.time(),
     }
     rules.save_learned_cells(key, f"City of {city}", {category: cell})
     emit("done", cell=cell)
