@@ -158,6 +158,7 @@ def _decide(call_id, service_value, location, transcript, guess, say) -> Outcome
     cat = rules.pick_category(f"{service_value}. {caller_text}", hint_label=service_value)
     bus.lanes(call_id, cat["lanes"])
     discovered_cell = None
+    decision_answer = None
     if cat["id"] == "general" and place.get("key"):
         # Not in the table: work out a search, and if it turns up a phone
         # number, use it and keep it as a new service row.
@@ -169,8 +170,12 @@ def _decide(call_id, service_value, location, transcript, guess, say) -> Outcome
             if ev["state"] == "searching":
                 bus.step(call_id, "service", "active", ev["label"], f'Searching "{ev["query"]}"')
 
-        found = learn.discover(f"{service_value}. {caller_text}", place["key"], place["name"], discover_progress)
+        # Pass what they said as the question too, so "is it open today?" gets answered.
+        found = learn.discover(f"{service_value}. {caller_text}", place["key"], place["name"], discover_progress,
+                               question=caller_text)
         bus.broadcast({"type": "rules", "rules": rules.public_table()})
+        if found and found.get("answer"):
+            decision_answer = found["answer"]
         if found and found.get("cell"):
             bus.annotate(call_id, f"Searched \"{found['query']}\" → {found['cell']['department']}, "
                                   f"{found['cell']['phone_display']}. Added \"{found['label']}\" to the rules.", "learned")
@@ -258,7 +263,9 @@ def _decide(call_id, service_value, location, transcript, guess, say) -> Outcome
               "handoff": "Briefing the department"}.get(TRANSFER_MODE, "Reading the number"))
     bus.status(call_id, "transferring", decision=decision, transfer=transfer)
 
-    forward = (f"Say: \"Ok great, I'm going to forward you to {cell['department']}. I'll tell them what's going on "
+    answer = (f"First, answer their question in one short sentence: {decision_answer} Then say: "
+              if decision_answer else "Say: ")
+    forward = (f"{answer}\"Ok great, I'm going to forward you to {cell['department']}. I'll tell them what's going on "
                f"and transfer the call.\" Also give them the direct number, {cell['phone_display']}, in case the "
                f"call drops.")
     if target:

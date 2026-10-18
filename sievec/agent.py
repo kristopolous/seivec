@@ -86,12 +86,16 @@ def on_call_start(call: guava.Call) -> None:
 
 @agent.on_search_query("service")
 def search_service(call: guava.Call, query: str):
-    """Guava asks us for options; System 1 keyword ranking answers instantly."""
+    """Guava asks us for options; keyword ranking answers instantly. If nothing
+    in the rules clearly fits ("public library"), offer "Something else" as a
+    real match so Guava moves on; routing then finds the office on the web."""
     lanes = rules.rank(f"{query} {caller_text(call.id)}")
-    matches = [l["label"] for l in lanes]
-    common = ["Pothole or road damage", "Bulky item pickup", "Dead animal pickup", "Streetlight out",
-              "Traffic signal or stop sign", "Something else"]
-    return matches, [c for c in common if c not in matches]
+    strong = [l["label"] for l in lanes if l["raw"] >= 2.0 and l["id"] != "general"]
+    if strong:
+        return strong, [l["label"] for l in lanes if l["label"] not in strong]
+    bus.annotate(call.id, f"\"{query}\" isn't in the rules yet. Taking it as \"Something else\": Sievec will look "
+                          f"up the right office on the web once it knows where.", "search")
+    return ["Something else"] + [l["label"] for l in lanes if l["id"] != "general"][:2], []
 
 
 SPEEDS = ["x-slow", "slow", "medium", "fast", "x-fast"]
