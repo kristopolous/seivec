@@ -18,7 +18,7 @@ from . import history, llm
 from .audit import audit
 from .bus import bus
 from .rules import LEARNED_DIR, rules
-from .sim import SCENARIOS, run_reel, run_scenario, stop_reel
+from .sim import INCIDENTS, LOCATIONS, SCENARIOS, build_scenario, run_reel, run_scenario, stop_reel
 
 STATIC = Path(__file__).resolve().parent.parent / "static"
 
@@ -139,6 +139,17 @@ def create_app() -> FastAPI:
             stop_reel()
             return {"playing": False}
         return {"playing": True, "started": run_reel()}
+
+    @app.get("/api/demo-options")
+    async def demo_options():
+        return {"incidents": [{"id": k, "label": v} for k, v in INCIDENTS.items()],
+                "locations": [{"id": k, "label": v[0]} for k, v in LOCATIONS.items()]}
+
+    @app.post("/api/simulate")
+    async def simulate_pick(incident: str, location: str):
+        if incident not in INCIDENTS or location not in LOCATIONS:
+            raise HTTPException(404, "Unknown incident or location")
+        return {"call_id": run_scenario(build_scenario(incident, location))}
 
     @app.post("/api/simulate/{name}")
     async def simulate(name: str):

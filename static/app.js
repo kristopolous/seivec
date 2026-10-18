@@ -756,8 +756,9 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("stat
 
 // ---------- sample calls ----------
 async function loadScenarios() {
-  const list = await (await fetch("/api/scenarios")).json();
-  $("sim-select").replaceChildren(...list.map((s) => new Option(s.title, s.id)));
+  const o = await (await fetch("/api/demo-options")).json();
+  $("sim-incident").replaceChildren(...o.incidents.map((i) => new Option(i.label, i.id)));
+  $("sim-location").replaceChildren(...o.locations.map((l) => new Option(l.label, l.id)));
 }
 let reelOn = false;
 $("reel").onclick = async () => {
@@ -769,7 +770,8 @@ $("reel").onclick = async () => {
 };
 $("sim-run").onclick = async () => {
   state.follow = true;
-  await fetch(`/api/simulate/${$("sim-select").value}`, { method: "POST" });
+  $("follow-live").checked = true;
+  await fetch(`/api/simulate?incident=${$("sim-incident").value}&location=${$("sim-location").value}`, { method: "POST" });
 };
 
 // ---------- browser calling (Guava WebRTC) ----------

@@ -199,6 +199,54 @@ for _id, _title, _num, _said, _where, _loc in _MORE:
                    ("caller", _where)],
     }
 
+# Demo picker: any incident x any location.
+INCIDENTS = {
+    "pothole": "There's a pothole so deep it popped my tire",
+    "dead_animal": "There's a dead possum on the sidewalk in front of my house",
+    "coyote": "There's a coyote walking around my backyard",
+    "snake": "There's a snake in my garden",
+    "couch": "I need someone to haul away an old couch and a mattress",
+    "abandoned_car": "There's a car with flat tires that hasn't moved in a month",
+    "graffiti": "Someone spray painted tags all over the wall by my building",
+    "streetlight": "The streetlight on my corner has been out for a week",
+    "signal": "The traffic light at the intersection is completely dark",
+    "party": "My neighbors are blasting music and it's two in the morning",
+    "barking": "My neighbor's dog barks all night, every night",
+    "tree": "A big branch fell off the street tree and it's blocking the sidewalk",
+    "dumping": "Somebody dumped a pile of tires and trash in the alley",
+    "roaches": "There's roaches all over my apartment and my landlord won't do anything",
+    "rent": "I can't pay my rent this month, is there any help",
+    "ticket": "Hi, I need to pay a parking ticket",
+    "water_main": "Water is gushing out of the street, it's flooding the intersection",
+    "break_in": "Someone smashed my car window last night and took my laptop",
+    "food": "My whole family got sick after eating at a restaurant last night",
+    "library": "Is the public library open today",
+    "gas": "I smell gas really strong outside my neighbor's house",
+}
+# (label, caller number for the area-code guess, what they say, location string)
+LOCATIONS = {
+    "hollywood": ("Hollywood (City of LA)", "+13235550142", "Hollywood, near Sunset and Vine", "Sunset and Vine, Hollywood"),
+    "van_nuys": ("Van Nuys (City of LA)", "+18185550199", "Van Nuys, on Sherman Way", "Sherman Way, Van Nuys"),
+    "santa_monica": ("Santa Monica (its own city)", "+13105550152", "Santa Monica, near Lincoln", "Lincoln Blvd, Santa Monica"),
+    "pasadena": ("Pasadena (its own city)", "+16265550188", "Pasadena, on Lake Avenue", "Lake Avenue, Pasadena"),
+    "long_beach": ("Long Beach (its own city)", "+15625550142", "Long Beach, Belmont Shore", "2nd Street, Belmont Shore, Long Beach"),
+    "topanga": ("Topanga (unincorporated county)", "+13105550161", "Topanga, off Topanga Canyon Boulevard", "Topanga"),
+    "east_la": ("East LA (unincorporated county)", "+13235550163", "East LA, Whittier and Atlantic", "Whittier Blvd and Atlantic, East Los Angeles"),
+    "glendora": ("Glendora (not learned yet)", "+16265550133", "Glendora, on Foothill", "Foothill Blvd, Glendora"),
+    "san_diego": ("San Diego (wildcard)", "+16195550120", "San Diego, in North Park", "North Park, San Diego"),
+    "irvine": ("Irvine (wildcard)", "+19495550170", "Irvine, near the Spectrum", "Irvine Spectrum, Irvine"),
+}
+
+
+def build_scenario(incident: str, location: str) -> dict:
+    label, number, where, loc = LOCATIONS[location]
+    return {
+        "title": f"{incident} in {label}", "caller": number, "service": "", "location": loc,
+        "script": [("agent", GREETING), ("caller", INCIDENTS[incident]),
+                   ("agent", "I can help with that. Where is this?"), ("caller", where)],
+    }
+
+
 # The demo reel: a spread of calls back to back.
 # A breadth tour: different services, jurisdictions, and behaviors (voice
 # speed, urgency, emergency, live web search, a brand-new service).
@@ -268,8 +316,8 @@ def _act(call_id: str, r: dict) -> None:
         _set_speed(call_id, new, f'System One heard "{latest}" as a request to talk {r["pace"]} ({r["pace_p"]:.0%})')
 
 
-def run_scenario(name: str) -> str:
-    sc = SCENARIOS[name]
+def run_scenario(name: str | dict) -> str:
+    sc = SCENARIOS[name] if isinstance(name, str) else name
     call_id = "sim-" + uuid.uuid4().hex[:8]
 
     def go() -> None:
